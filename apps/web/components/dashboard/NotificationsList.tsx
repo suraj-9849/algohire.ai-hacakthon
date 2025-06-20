@@ -19,13 +19,13 @@ export function NotificationsList({ onNotificationClick }: NotificationsListProp
 
   useEffect(() => {
     if (!user) {
-      console.log('❌ No user found, cannot fetch notifications')
+      console.log('no user found, cannot fetch notifications')
       setLoading(false)
       return
     }
 
-    console.log('🔍 Fetching notifications for user ID:', user.id)
-    console.log('👤 Current user:', { id: user.id, name: user.name, email: user.email })
+    console.log('fetching notifications for user ID:', user.id)
+    console.log({ id: user.id, name: user.name, email: user.email })
 
     const q = query(
       collection(firestore, 'notifications'),
@@ -34,11 +34,11 @@ export function NotificationsList({ onNotificationClick }: NotificationsListProp
     )
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      console.log('📬 Notification snapshot received, docs count:', snapshot.docs.length)
+      console.log('notification snapshot received, docs count:', snapshot.docs.length)
       
       const notificationsList = snapshot.docs.map(doc => {
         const data = doc.data()
-        console.log('📧 Notification doc:', { id: doc.id, ...data })
+        console.log('notification doc:', { id: doc.id, ...data })
         return {
           id: doc.id,
           ...data,
@@ -46,11 +46,11 @@ export function NotificationsList({ onNotificationClick }: NotificationsListProp
         }
       }) as Notification[]
       
-      console.log('📋 Final notifications list:', notificationsList)
+      console.log('final notifications list:', notificationsList)
       setNotifications(notificationsList)
       setLoading(false)
     }, (error) => {
-      console.error('❌ Error fetching notifications:', error)
+      console.error('error fetching notifications:', error)
       setLoading(false)
     })
 
@@ -58,18 +58,16 @@ export function NotificationsList({ onNotificationClick }: NotificationsListProp
   }, [user])
 
   const handleNotificationClick = async (notification: Notification) => {
-    // Mark as read
     if (!notification.read) {
       await updateDoc(doc(firestore, 'notifications', notification.id), {
         read: true
       })
     }
 
-    // Create a candidate object to pass to the handler
     const candidate: Candidate = {
       id: notification.candidateId,
       name: notification.candidateName,
-      email: '', // We don't have email in notification, but it's required for type
+      email: '', 
       createdAt: new Date(),
       createdBy: ''
     }
@@ -94,32 +92,6 @@ export function NotificationsList({ onNotificationClick }: NotificationsListProp
         <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications</h3>
         <p className="text-gray-500">You'll see mentions here when someone tags you in a message.</p>
         
-        {/* Debug info */}
-        {user && (
-          <div className="mt-4 p-2 bg-gray-100 rounded text-xs">
-            <p><strong>Debug Info:</strong></p>
-            <p>User ID: {user.id}</p>
-            <p>User Name: {user.name}</p>
-            <p>User Email: {user.email}</p>
-            <button 
-              onClick={async () => {
-                console.log('🔍 Manually checking notifications in Firestore...')
-                try {
-                  const allNotifications = await getDocs(collection(firestore, 'notifications'))
-                  console.log('📊 All notifications in database:')
-                  allNotifications.docs.forEach(doc => {
-                    console.log('📧', doc.id, ':', doc.data())
-                  })
-                } catch (error) {
-                  console.error('❌ Error fetching all notifications:', error)
-                }
-              }}
-              className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-xs"
-            >
-              🔍 Debug Check
-            </button>
-          </div>
-        )}
       </div>
     )
   }

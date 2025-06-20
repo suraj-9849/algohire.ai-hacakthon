@@ -1,203 +1,119 @@
-# Collaborative Candidate Notes MVP
+# Collaborative Candidate Notes
 
-A real-time collaborative note-taking application for recruiters and hiring managers, built with Next.js, Firebase, and TanStack Query.
+A simple real-time platform for hiring teams to share candidate notes and collaborate during interviews.
 
-## 🚀 Features
+##  What it does
 
-### Core Functionality
-- **Authentication**: Secure email/password signup and login
-- **Dashboard**: Clean interface with candidate list and notifications
-- **Real-time Messaging**: Live chat interface for each candidate
-- **@Username Tagging**: Autocomplete mention system with notifications
-- **Global Notifications**: Dashboard card showing all tagged messages
+- **Real-time messaging** for each candidate
+- **@mention teammates** to get their attention  
+- **Live notifications** when someone mentions you
+- **Simple dashboard** to see all candidates and notifications
 
-### Advanced Features
-- **Real-time Updates**: Firebase Realtime Database for instant message delivery
-- **Route Protection**: Secure pages with authentication guards
-- **Mobile Responsive**: Optimized for all device sizes
-- **Modern UI**: ShadCN UI components with Tailwind CSS
-- **Type Safety**: Full TypeScript implementation
+## 🛠 Tech Stack
 
-## 🛠️ Tech Stack
+- **Frontend:** Next.js + TypeScript + Tailwind CSS
+- **Backend:** Node.js + Express + TypeScript  
+- **Database:** Firebase (Firestore + Realtime Database)
+- **Authentication:** Firebase Auth
 
-- **Frontend**: Next.js 14 + React 18
-- **Styling**: Tailwind CSS + ShadCN UI
-- **State Management**: TanStack Query
-- **Authentication**: Firebase Authentication
-- **Database**: Firebase Firestore + Realtime Database
-- **Forms**: React Hook Form + Zod
-- **Icons**: Lucide React
-- **Monorepo**: Turborepo
+##  Quick Start
 
-## 📦 Installation
-
-### Prerequisites
-- Node.js 18+ 
-- npm or yarn
-- Firebase project
-
-### Setup Instructions
-
-1. **Clone the repository**
-   ```bash
-   git clone <your-repo-url>
-   cd algohire-ai
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   cd apps/web
-   npm install
-   ```
-
-3. **Firebase Configuration**
-   - Create a new Firebase project at [Firebase Console](https://console.firebase.google.com)
-   - Enable Authentication with Email/Password
-   - Create Firestore database
-   - Enable Realtime Database
-   - Copy your config values
-
-4. **Environment Setup**
-   Create `apps/web/.env.local`:
-   ```env
-   NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-   NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-   NEXT_PUBLIC_FIREBASE_DATABASE_URL=https://your_project-default-rtdb.firebaseio.com/
-   ```
-
-5. **Run the application**
-   ```bash
-   # From the root directory
-   npm run dev
-   
-   # Or from apps/web
-   cd apps/web
-   npm run dev
-   ```
-
-## 🎯 Usage Guide
-
-### Getting Started
-1. Visit `http://localhost:3000`
-2. Create an account or sign in
-3. Add candidates from the dashboard
-4. Click on any candidate to open the notes interface
-5. Type messages and use @username to mention other users
-6. Check notifications panel for mentions
-
-### Key Features Demo
-- **Add Candidates**: Use the "Add Candidate" button on the dashboard
-- **Real-time Chat**: Messages appear instantly for all users viewing the same candidate
-- **@Mentions**: Type @ followed by a name for autocomplete suggestions
-- **Notifications**: Mentioned users see real-time notifications with navigation
-
-## 🏗️ Architecture
-
-```
-apps/web/
-├── app/                    # Next.js App Router
-├── components/            
-│   ├── auth/              # Authentication components
-│   ├── dashboard/         # Main dashboard features
-│   ├── providers/         # Context providers
-│   └── ui/                # Reusable UI components
-├── hooks/                 # Custom React hooks
-├── lib/                   # Utilities and configurations
-└── public/                # Static assets
-```
-
-### Key Components
-- **AuthProvider**: Authentication context and state management
-- **Dashboard**: Main application interface
-- **CandidateNotesDialog**: Real-time messaging interface
-- **NotificationsList**: @mention notifications system
-
-## 🔧 Development
-
-### Available Scripts
+### 1. Install Dependencies
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run ESLint
-npm run type-check   # TypeScript type checking
+# Install pnpm if you don't have it
+npm install -g pnpm
+
+# Install project dependencies
+pnpm install
 ```
 
-### Code Quality
-- ESLint configuration for code quality
-- TypeScript for type safety
-- Prettier for code formatting
-- React Hook Form with Zod validation
+### 2. Setup Environment
 
-## 🚀 Deployment
+Create `apps/web/.env.local`:
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+NEXT_PUBLIC_FIREBASE_DATABASE_URL=https://your_project-default-rtdb.firebaseio.com/
+NEXT_PUBLIC_API_URL=http://localhost:5001/api
+```
 
-### Recommended Deployment (Azure)
-1. **Azure Static Web Apps**
-   ```bash
-   npm run build
-   # Deploy to Azure Static Web Apps
-   ```
+Create `apps/backend/.env`:
+```env
+NODE_ENV=development
+PORT=5001
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_DATABASE_URL=https://your_project-default-rtdb.firebaseio.com/
+FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
+```
 
-2. **Alternative: Vercel**
-   ```bash
-   npm run build
-   # Deploy to Vercel
-   ```
+### 3. Run the App
 
-### Environment Variables
-Ensure all Firebase environment variables are configured in your deployment platform.
+**Option 1: Traditional way**
+```bash
+# Start frontend (Terminal 1)
+cd apps/web
+pnpm dev
 
-## 🛡️ Security
+# Start backend (Terminal 2)  
+cd apps/backend
+pnpm dev
+```
 
-- **Route Protection**: Unauthenticated users redirected to login
-- **Input Sanitization**: XSS protection for user messages
-- **Firebase Security Rules**: Firestore and Realtime Database rules
-- **Type Validation**: Zod schemas for data validation
+**Option 2: Using Docker**
+```bash
+# Build and run with Docker
+docker-compose up -d
 
-## 📱 Mobile Responsive
+# View logs
+docker-compose logs -f
 
-- **Responsive Design**: Works on all screen sizes
-- **Touch Optimized**: Mobile-friendly interactions
-- **Progressive Enhancement**: Core functionality works everywhere
+# Stop
+docker-compose down
+```
 
-## ⚡ Performance
+Visit http://localhost:3000 🎉
 
-- **Real-time Updates**: Firebase Realtime Database for instant messaging
-- **Optimistic Updates**: UI updates before server confirmation
-- **Code Splitting**: Next.js automatic code splitting
-- **Lazy Loading**: Components loaded on demand
 
-## 🔮 Future Enhancements
+## 🔧 Available Commands
 
-If given more time, I would implement:
+```bash
+pnpm dev              # Start both apps
+pnpm dev:web          # Frontend only
+pnpm dev:backend      # Backend only
 
-1. **Rich Text Editor**: Bold, italic, links in messages
-2. **File Attachments**: Upload images/documents to notes
-3. **Message Search**: Search through all candidate notes
-4. **Read Receipts**: Show who's read which messages
-5. **Online Status**: Show who's currently viewing a candidate
-6. **Export Features**: Download candidate notes as PDF
-7. **Dark/Light Theme**: Toggle between themes
-8. **Keyboard Shortcuts**: Power user features
-9. **Message Reactions**: Emoji reactions to messages
-10. **Role-based Permissions**: Admin vs regular user roles
+# Building
+pnpm build            # Build both apps
+pnpm type-check       # Check TypeScript
+pnpm lint             # Run ESLint
 
-## 📞 Support
+# Docker
+docker-compose up     # Run with Docker
+docker-compose down   # Stop Docker containers
+```
 
-For any questions or issues, please contact:
-- **Developer**: [Your Name]
-- **Email**: [Your Email]
-- **GitHub**: [Your GitHub Profile]
+##  How to Use
 
-## 📄 License
+1. **Sign up** with email/password
+2. **Add candidates** from the dashboard  
+3. **Click a candidate** to start chatting
+4. **Use @username** to mention teammates
+5. **Check notifications** for your mentions
 
-This project is built for the Algohire Full-Stack Developer Hiring Hackathon.
+## Firebase Setup
+
+1. Create a Firebase project
+2. Enable **Authentication** (Email/Password)
+3. Enable **Firestore Database**  
+4. Enable **Realtime Database**
+5. Get your config and service account key
+6. Update the `.env` files
+
+- [CI Pipeline Setup](CI-SETUP.md) - Automated testing and quality checks
 
 ---
 
-**Built with ❤️ for the Algohire team**
+**Built for Algohire Hackathon**

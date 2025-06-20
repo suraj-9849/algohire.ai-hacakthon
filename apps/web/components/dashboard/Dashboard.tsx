@@ -35,7 +35,7 @@ export function Dashboard(): JSX.Element {
                 <h1 className="text-2xl font-bold text-gray-900">Candidate Notes</h1>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">Welcome, {user?.name}</span>
               <Button variant="outline" size="sm" onClick={handleLogout}>
@@ -97,11 +97,11 @@ export function Dashboard(): JSX.Element {
       </main>
 
       {/* Dialogs */}
-      <AddCandidateDialog 
-        open={showAddCandidate} 
-        onOpenChange={setShowAddCandidate} 
+      <AddCandidateDialog
+        open={showAddCandidate}
+        onOpenChange={setShowAddCandidate}
       />
-      
+
       {selectedCandidate && (
         <CandidateNotesDialog
           candidate={selectedCandidate}
