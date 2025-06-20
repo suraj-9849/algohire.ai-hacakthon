@@ -50,7 +50,7 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
     if (!open || !candidate.id) return
 
     const messagesRef = ref(database, `messages/${candidate.id}`)
-    
+
     const handleMessages = (snapshot: any) => {
       if (snapshot.exists()) {
         const messagesData = snapshot.val()
@@ -59,7 +59,7 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
           ...messagesData[key],
           timestamp: new Date(messagesData[key].timestamp)
         })).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-        
+
         setMessages(messagesList)
       } else {
         setMessages([])
@@ -88,7 +88,7 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
     const cursorPosition = e.target.selectionStart || 0
     const textBeforeCursor = value.substring(0, cursorPosition)
     const atIndex = textBeforeCursor.lastIndexOf('@')
-    
+
     if (atIndex !== -1 && atIndex === textBeforeCursor.length - 1) {
       setShowMentions(true)
       setMentionFilter('')
@@ -111,21 +111,35 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
     inputRef.current?.focus()
   }
 
-  const extractMentions = (text: string) => {
-    const mentionRegex = /@(\w+(?:\s+\w+)*)/g
-    const mentions: string[] = []
-    let match
+  const extractMentions = (text: string): string[] => {
+    // console.log('Starting mention extraction for text:', text)
+    // console.log('Available users:', users.map(u => ({ id: u.id, name: u.name })))
 
-    while ((match = mentionRegex.exec(text)) !== null) {
-      const mentionedName = match[1]
-      if (mentionedName) {
-        const mentionedUser = users.find(u => u.name.toLowerCase() === mentionedName.toLowerCase())
-        if (mentionedUser) {
+    // Simple approach: split by spaces and find @mentions
+    const mentions: string[] = []
+    const words = text.split(/\s+/)
+
+    for (const word of words) {
+      if (word.startsWith('@')) {
+        const username = word.slice(1).toLowerCase().trim()
+        // console.log('Checking mention for username:', username)
+
+        // Find user by name (case insensitive)
+        const mentionedUser = users.find(u =>
+          u.name && u.name.toLowerCase().trim() === username
+        )
+
+        if (mentionedUser?.id) {
+          // console.log('Found user:', mentionedUser.name, 'with ID:', mentionedUser.id)
           mentions.push(mentionedUser.id)
+        } else {
+          // console.log('User not found for username:', username)
+          // console.log('usernames:', users.map(u => u.name?.toLowerCase()))
         }
       }
     }
 
+    // console.log('Final mentions array:', mentions)
     return mentions
   }
 
@@ -148,16 +162,50 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
       await push(ref(database, `messages/${candidate.id}`), messageData)
 
       // Create notifications for mentioned users
-      for (const mentionedUserId of mentions) {
-        await addDoc(collection(firestore, 'notifications'), {
-          userId: mentionedUserId,
-          candidateId: candidate.id,
-          candidateName: candidate.name,
-          content: newMessage.trim(),
-          senderName: user.name,
-          timestamp: new Date(),
-          read: false
-        })
+      if (mentions.length > 0) {
+        // console.log('Creating notifications for', mentions.length, 'users:', mentions)
+
+        for (const mentionedUserId of mentions) {
+          try {
+            // Don't notify yourself
+            if (mentionedUserId === user.id) {
+              // console.log('Skipping self-notification for:', mentionedUserId)
+              continue
+            }
+
+            const notificationData = {
+              userId: mentionedUserId,
+              messageId: messageData.timestamp.toString(),
+              candidateId: candidate.id,
+              candidateName: candidate.name,
+              content: newMessage.trim(),
+              senderName: user.name,
+              timestamp: new Date(),
+              read: false
+            }
+
+            // console.log('Creating notification for user:', mentionedUserId)
+            // console.log('Notification data:', notificationData)
+
+            const notificationRef = await addDoc(collection(firestore, 'notifications'), notificationData)
+            // console.log('Notification created successfully! ID:', notificationRef.id)
+
+            toast({
+              title: "Mention sent!",
+              description: `Notified user about your message`,
+            })
+
+          } catch (notificationError) {
+            // // console.error('Error creating notification for user', mentionedUserId, ':', notificationError)
+            toast({
+              variant: "destructive",
+              title: "Notification failed",
+              description: "Could not send notification to mentioned user",
+            })
+          }
+        }
+      } else {
+        // console.log('No mentions found, skipping notification creation')
       }
 
       setNewMessage('')
@@ -180,14 +228,14 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
     }
   }
 
-  const filteredUsers = users.filter(u => 
-    u.id !== user?.id && 
+  const filteredUsers = users.filter(u =>
+    u.id !== user?.id &&
     u.name.toLowerCase().includes(mentionFilter.toLowerCase())
   )
 
   const renderMessage = (message: Message) => {
     const isOwnMessage = message.senderId === user?.id
-    
+
     // Highlight mentions in message content
     const highlightMentions = (text: string) => {
       return text.replace(/@(\w+(?:\s+\w+)*)/g, '<span class="bg-blue-100 text-blue-800 px-1 rounded">@$1</span>')
@@ -199,11 +247,10 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
         className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-4`}
       >
         <div
-          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-            isOwnMessage
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-gray-100 text-gray-900'
-          }`}
+          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${isOwnMessage
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-gray-100 text-gray-900'
+            }`}
         >
           <div className="text-xs opacity-75 mb-1">
             {message.senderName} • {message.timestamp.toLocaleTimeString()}
@@ -224,7 +271,7 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
         <DialogHeader>
           <DialogTitle>Notes for {candidate.name}</DialogTitle>
         </DialogHeader>
-        
+
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 border rounded-lg bg-gray-50">
           {loading ? (
