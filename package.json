@@ -1,24 +1,38 @@
 {
-  "name": "algohire-ai",
+  "name": "collaborative-candidate-notes",
+  "version": "1.0.0",
+  "description": "Collaborative Candidate Notes MVP for Algohire",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "dev:web": "turbo dev --filter=web",
+    "dev:backend": "turbo dev --filter=backend",
+    "dev:shared": "turbo dev --filter=@repo/shared",
+    "build:web": "turbo build --filter=web",
+    "build:backend": "turbo build --filter=backend", 
+    "build:shared": "turbo build --filter=@repo/shared",
+    "start": "turbo start",
+    "start:web": "turbo start --filter=web",
+    "start:backend": "turbo start --filter=backend",
+    "lint": "turbo lint",
+    "clean": "turbo clean",
+    "type-check": "turbo type-check",
+    "install:all": "pnpm install && pnpm --filter=backend install && pnpm --filter=web install && pnpm --filter=@repo/shared install"
   },
   "devDependencies": {
-    "prettier": "^3.5.3",
-    "turbo": "^2.5.4",
-    "typescript": "5.8.2"
+    "@turbo/gen": "^1.10.12",
+    "eslint": "^8.48.0",
+    "prettier": "^3.0.3",
+    "turbo": "latest",
+    "typescript": "^5.2.2"
   },
   "engines": {
     "node": ">=18"
   },
-  "packageManager": "npm@10.8.2",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+  "packageManager": "pnpm@8.15.0"
 }

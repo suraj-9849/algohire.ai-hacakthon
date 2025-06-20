@@ -1,84 +1,203 @@
-# Turborepo starter
+# Collaborative Candidate Notes MVP
 
-This Turborepo starter is maintained by the Turborepo core team.
+A real-time collaborative note-taking application for recruiters and hiring managers, built with Next.js, Firebase, and TanStack Query.
 
-## Using this example
+## 🚀 Features
 
-Run the following command:
+### Core Functionality
+- **Authentication**: Secure email/password signup and login
+- **Dashboard**: Clean interface with candidate list and notifications
+- **Real-time Messaging**: Live chat interface for each candidate
+- **@Username Tagging**: Autocomplete mention system with notifications
+- **Global Notifications**: Dashboard card showing all tagged messages
 
-```sh
-npx create-turbo@latest
+### Advanced Features
+- **Real-time Updates**: Firebase Realtime Database for instant message delivery
+- **Route Protection**: Secure pages with authentication guards
+- **Mobile Responsive**: Optimized for all device sizes
+- **Modern UI**: ShadCN UI components with Tailwind CSS
+- **Type Safety**: Full TypeScript implementation
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 14 + React 18
+- **Styling**: Tailwind CSS + ShadCN UI
+- **State Management**: TanStack Query
+- **Authentication**: Firebase Authentication
+- **Database**: Firebase Firestore + Realtime Database
+- **Forms**: React Hook Form + Zod
+- **Icons**: Lucide React
+- **Monorepo**: Turborepo
+
+## 📦 Installation
+
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- Firebase project
+
+### Setup Instructions
+
+1. **Clone the repository**
+   ```bash
+   git clone <your-repo-url>
+   cd algohire-ai
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   cd apps/web
+   npm install
+   ```
+
+3. **Firebase Configuration**
+   - Create a new Firebase project at [Firebase Console](https://console.firebase.google.com)
+   - Enable Authentication with Email/Password
+   - Create Firestore database
+   - Enable Realtime Database
+   - Copy your config values
+
+4. **Environment Setup**
+   Create `apps/web/.env.local`:
+   ```env
+   NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+   NEXT_PUBLIC_FIREBASE_DATABASE_URL=https://your_project-default-rtdb.firebaseio.com/
+   ```
+
+5. **Run the application**
+   ```bash
+   # From the root directory
+   npm run dev
+   
+   # Or from apps/web
+   cd apps/web
+   npm run dev
+   ```
+
+## 🎯 Usage Guide
+
+### Getting Started
+1. Visit `http://localhost:3000`
+2. Create an account or sign in
+3. Add candidates from the dashboard
+4. Click on any candidate to open the notes interface
+5. Type messages and use @username to mention other users
+6. Check notifications panel for mentions
+
+### Key Features Demo
+- **Add Candidates**: Use the "Add Candidate" button on the dashboard
+- **Real-time Chat**: Messages appear instantly for all users viewing the same candidate
+- **@Mentions**: Type @ followed by a name for autocomplete suggestions
+- **Notifications**: Mentioned users see real-time notifications with navigation
+
+## 🏗️ Architecture
+
+```
+apps/web/
+├── app/                    # Next.js App Router
+├── components/            
+│   ├── auth/              # Authentication components
+│   ├── dashboard/         # Main dashboard features
+│   ├── providers/         # Context providers
+│   └── ui/                # Reusable UI components
+├── hooks/                 # Custom React hooks
+├── lib/                   # Utilities and configurations
+└── public/                # Static assets
 ```
 
-## What's inside?
+### Key Components
+- **AuthProvider**: Authentication context and state management
+- **Dashboard**: Main application interface
+- **CandidateNotesDialog**: Real-time messaging interface
+- **NotificationsList**: @mention notifications system
 
-This Turborepo includes the following packages/apps:
+## 🔧 Development
 
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-```
-cd my-turborepo
-pnpm build
+### Available Scripts
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run start        # Start production server
+npm run lint         # Run ESLint
+npm run type-check   # TypeScript type checking
 ```
 
-### Develop
+### Code Quality
+- ESLint configuration for code quality
+- TypeScript for type safety
+- Prettier for code formatting
+- React Hook Form with Zod validation
 
-To develop all apps and packages, run the following command:
+## 🚀 Deployment
 
-```
-cd my-turborepo
-pnpm dev
-```
+### Recommended Deployment (Azure)
+1. **Azure Static Web Apps**
+   ```bash
+   npm run build
+   # Deploy to Azure Static Web Apps
+   ```
 
-### Remote Caching
+2. **Alternative: Vercel**
+   ```bash
+   npm run build
+   # Deploy to Vercel
+   ```
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+### Environment Variables
+Ensure all Firebase environment variables are configured in your deployment platform.
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+## 🛡️ Security
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+- **Route Protection**: Unauthenticated users redirected to login
+- **Input Sanitization**: XSS protection for user messages
+- **Firebase Security Rules**: Firestore and Realtime Database rules
+- **Type Validation**: Zod schemas for data validation
 
-```
-cd my-turborepo
-npx turbo login
-```
+## 📱 Mobile Responsive
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+- **Responsive Design**: Works on all screen sizes
+- **Touch Optimized**: Mobile-friendly interactions
+- **Progressive Enhancement**: Core functionality works everywhere
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+## ⚡ Performance
 
-```
-npx turbo link
-```
+- **Real-time Updates**: Firebase Realtime Database for instant messaging
+- **Optimistic Updates**: UI updates before server confirmation
+- **Code Splitting**: Next.js automatic code splitting
+- **Lazy Loading**: Components loaded on demand
 
-## Useful Links
+## 🔮 Future Enhancements
 
-Learn more about the power of Turborepo:
+If given more time, I would implement:
 
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+1. **Rich Text Editor**: Bold, italic, links in messages
+2. **File Attachments**: Upload images/documents to notes
+3. **Message Search**: Search through all candidate notes
+4. **Read Receipts**: Show who's read which messages
+5. **Online Status**: Show who's currently viewing a candidate
+6. **Export Features**: Download candidate notes as PDF
+7. **Dark/Light Theme**: Toggle between themes
+8. **Keyboard Shortcuts**: Power user features
+9. **Message Reactions**: Emoji reactions to messages
+10. **Role-based Permissions**: Admin vs regular user roles
+
+## 📞 Support
+
+For any questions or issues, please contact:
+- **Developer**: [Your Name]
+- **Email**: [Your Email]
+- **GitHub**: [Your GitHub Profile]
+
+## 📄 License
+
+This project is built for the Algohire Full-Stack Developer Hiring Hackathon.
+
+---
+
+**Built with ❤️ for the Algohire team**
