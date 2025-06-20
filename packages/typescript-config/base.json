@@ -9,7 +9,7 @@
     "lib": ["ES2015", "ES2017", "ES2018", "ES2019", "ES2020", "ES2021", "ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleDetection": "force",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "noUncheckedIndexedAccess": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
