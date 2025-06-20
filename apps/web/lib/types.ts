@@ -9,8 +9,12 @@ export interface Candidate {
   id: string
   name: string
   email: string
+  position: string
+  phone?: string
+  location?: string
   createdAt: Date
   createdBy: string
+  status?: 'pending' | 'reviewed' | 'interviewed' | 'hired' | 'rejected'
 }
 
 export interface Message {

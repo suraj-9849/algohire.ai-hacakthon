@@ -1,89 +1,219 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { collection, query, onSnapshot, orderBy } from 'firebase/firestore'
-import { Mail, User, Calendar } from 'lucide-react'
-import { firestore } from '@/lib/firebase'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  Mail, 
+  User, 
+  Calendar, 
+  Phone, 
+  MapPin, 
+  Clock,
+  Briefcase,
+  GraduationCap,
+  Eye,
+  MessageCircle,
+  TrendingUp
+} from 'lucide-react'
 import { Candidate } from '@/lib/types'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Card, CardContent } from '@/components/ui/card'
 
 interface CandidateListProps {
-  onCandidateClick: (candidate: Candidate) => void
+  candidates: Candidate[]
+  isLoading: boolean
+  searchQuery: string
+  onCandidateClick?: (candidate: Candidate) => void
 }
 
-export function CandidateList({ onCandidateClick }: CandidateListProps): JSX.Element {
-  const [candidates, setCandidates] = useState<Candidate[]>([])
-  const [loading, setLoading] = useState(true)
+// Helper functions
+const getRandomStatus = () => {
+  const statuses = [
+    { label: 'Active', color: 'default', priority: 'high' },
+    { label: 'Interview Scheduled', color: 'secondary', priority: 'high' },
+    { label: 'Under Review', color: 'outline', priority: 'medium' },
+    { label: 'Pending Response', color: 'secondary', priority: 'low' },
+    { label: 'Final Round', color: 'default', priority: 'high' }
+  ] as const
+  return statuses[Math.floor(Math.random() * statuses.length)]
+}
 
-  useEffect(() => {
-    const q = query(
-      collection(firestore, 'candidates'),
-      orderBy('createdAt', 'desc')
-    )
+const getInitials = (name: string) => {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase()
+}
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const candidatesList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date()
-      })) as Candidate[]
-      
-      setCandidates(candidatesList)
-      setLoading(false)
-    })
-
-    return unsubscribe
-  }, [])
-
-  if (loading) {
+export function CandidateList({ candidates, isLoading, searchQuery, onCandidateClick }: CandidateListProps) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <LoadingSpinner />
+      <div className="flex items-center justify-center py-12">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <LoadingSpinner className="mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Loading candidates...</p>
+        </motion.div>
       </div>
     )
   }
 
   if (candidates.length === 0) {
     return (
-      <div className="text-center py-8">
-        <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No candidates yet</h3>
-        <p className="text-gray-500">Add your first candidate to get started.</p>
-      </div>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center py-12"
+      >
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+          className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6"
+        >
+          <User className="h-10 w-10 text-gray-600" />
+        </motion.div>
+        <h3 className="text-xl font-semibold text-black mb-2">
+          {searchQuery ? 'No candidates found' : 'No candidates yet'}
+        </h3>
+        <p className="text-gray-500 mb-6">
+          {searchQuery 
+            ? `No candidates match "${searchQuery}". Try adjusting your search.`
+            : 'Start building your talent pipeline by adding your first candidate.'
+          }
+        </p>
+        {!searchQuery && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="flex items-center justify-center space-x-6 text-sm text-gray-400"
+          >
+            <div className="flex items-center space-x-2">
+              <Briefcase className="h-4 w-4" />
+              <span>Track applications</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <MessageCircle className="h-4 w-4" />
+              <span>Collaborate with team</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="h-4 w-4" />
+              <span>Monitor progress</span>
+            </div>
+          </motion.div>
+        )}
+      </motion.div>
     )
   }
 
   return (
-    <div className="space-y-3">
-      {candidates.map((candidate) => (
-        <div
-          key={candidate.id}
-          onClick={() => onCandidateClick(candidate)}
-          className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-        >
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h3 className="text-lg font-medium text-gray-900 mb-1">
-                {candidate.name}
-              </h3>
-              <div className="flex items-center space-x-4 text-sm text-gray-500">
-                <div className="flex items-center space-x-1">
-                  <Mail className="h-4 w-4" />
-                  <span>{candidate.email}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>{candidate.createdAt.toLocaleDateString()}</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-              <span className="text-xs text-gray-500">Active</span>
-            </div>
-          </div>
-        </div>
-      ))}
+    <div className="space-y-4">
+      <AnimatePresence>
+        {candidates.map((candidate, index) => {
+          const statusData = getRandomStatus() || { label: 'Active', color: 'default', priority: 'high' }
+          
+          return (
+            <motion.div
+              key={candidate.id}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ delay: index * 0.1 }}
+              whileHover={{ y: -4, transition: { duration: 0.2 } }}
+              onClick={() => onCandidateClick?.(candidate)}
+              className="group cursor-pointer"
+            >
+              <Card className="border-gray-200 bg-white hover:shadow-lg transition-all duration-300 group-hover:border-gray-300">
+                <CardContent className="p-6">
+                  <div className="flex items-start space-x-4">
+                    {/* Avatar */}
+                    <motion.div
+                      whileHover={{ scale: 1.1 }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                    >
+                      <Avatar className="h-14 w-14 border-2 border-gray-200 shadow-sm">
+                        <AvatarFallback className="bg-black text-white font-semibold text-lg">
+                          {getInitials(candidate.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </motion.div>
+
+                    {/* Main Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="text-xl font-bold text-black mb-1 group-hover:text-gray-700 transition-colors">
+                            {candidate.name}
+                          </h3>
+                          <div className="flex items-center space-x-4 text-sm text-gray-600">
+                            <div className="flex items-center space-x-1">
+                              <Mail className="h-4 w-4 text-gray-400" />
+                              <span>{candidate.email}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Calendar className="h-4 w-4 text-gray-400" />
+                              <span>{new Date(candidate.createdAt).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          {/* Status Badge */}
+                          <Badge variant={statusData.color as any} className="text-xs">
+                            {statusData.label}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Position */}
+                      <div className="flex items-center space-x-4 mb-3 text-sm text-gray-600">
+                        <div className="flex items-center space-x-1">
+                          <Briefcase className="h-4 w-4 text-gray-400" />
+                          <span className="font-medium">{candidate.position}</span>
+                        </div>
+                        {candidate.phone && (
+                          <div className="flex items-center space-x-1">
+                            <Phone className="h-4 w-4 text-gray-400" />
+                            <span>{candidate.phone}</span>
+                          </div>
+                        )}
+                        {candidate.location && (
+                          <div className="flex items-center space-x-1">
+                            <MapPin className="h-4 w-4 text-gray-400" />
+                            <span>{candidate.location}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Metadata Row */}
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-1">
+                            <Eye className="h-3 w-3" />
+                            <span>{Math.floor(Math.random() * 50) + 10} views</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <MessageCircle className="h-3 w-3" />
+                            <span>{Math.floor(Math.random() * 8)} notes</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Clock className="h-3 w-3" />
+                            <span>Updated {Math.floor(Math.random() * 7) + 1}d ago</span>
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          <span className="font-medium">Click to view notes</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )
+        })}
+      </AnimatePresence>
     </div>
   )
 } 

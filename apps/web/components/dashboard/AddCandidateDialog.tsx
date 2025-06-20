@@ -1,22 +1,22 @@
 'use client'
 
-import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { collection, addDoc } from 'firebase/firestore'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { firestore } from '@/lib/firebase'
+import { useAddCandidate } from '@/hooks/useCandidates'
 import { useAuthContext } from '@/components/providers/AuthProvider'
-import { toast } from '@/hooks/useToast'
 
 const candidateSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
+  position: z.string().min(2, 'Position must be at least 2 characters'),
+  phone: z.string().optional(),
+  location: z.string().optional(),
 })
 
 type CandidateForm = z.infer<typeof candidateSchema>
@@ -26,8 +26,8 @@ interface AddCandidateDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-export function AddCandidateDialog({ open, onOpenChange }: AddCandidateDialogProps): JSX.Element {
-  const [loading, setLoading] = useState(false)
+export function AddCandidateDialog({ open, onOpenChange }: AddCandidateDialogProps) {
+  const addCandidate = useAddCandidate()
   const { user } = useAuthContext()
 
   const form = useForm<CandidateForm>({
@@ -35,36 +35,30 @@ export function AddCandidateDialog({ open, onOpenChange }: AddCandidateDialogPro
     defaultValues: {
       name: '',
       email: '',
+      position: '',
+      phone: '',
+      location: '',
     },
   })
 
   const onSubmit = async (data: CandidateForm) => {
     if (!user) return
     
-    setLoading(true)
     try {
-      await addDoc(collection(firestore, 'candidates'), {
+      await addCandidate.mutateAsync({
         name: data.name,
         email: data.email,
-        createdAt: new Date(),
+        position: data.position,
+        phone: data.phone || undefined,
+        location: data.location || undefined,
         createdBy: user.id,
-      })
-
-      toast({
-        title: "Candidate added",
-        description: `${data.name} has been added successfully.`,
       })
 
       form.reset()
       onOpenChange(false)
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error adding candidate",
-        description: error.message || "Please try again.",
-      })
-    } finally {
-      setLoading(false)
+    } catch (error) {
+      // Error handling is done in the mutation
+      console.error('Failed to add candidate:', error)
     }
   }
 
@@ -74,7 +68,7 @@ export function AddCandidateDialog({ open, onOpenChange }: AddCandidateDialogPro
         <DialogHeader>
           <DialogTitle>Add New Candidate</DialogTitle>
           <DialogDescription>
-            Enter the candidate's details to add them to your list.
+            Enter the candidate's details to add them to your pipeline.
           </DialogDescription>
         </DialogHeader>
         
@@ -107,18 +101,54 @@ export function AddCandidateDialog({ open, onOpenChange }: AddCandidateDialogPro
               </p>
             )}
           </div>
+
+          <div>
+            <Label htmlFor="position">Position</Label>
+            <Input
+              id="position"
+              placeholder="e.g. Senior Software Engineer"
+              {...form.register('position')}
+            />
+            {form.formState.errors.position && (
+              <p className="text-sm text-destructive mt-1">
+                {form.formState.errors.position.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="phone">Phone (Optional)</Label>
+            <Input
+              id="phone"
+              placeholder="Enter phone number"
+              {...form.register('phone')}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="location">Location (Optional)</Label>
+            <Input
+              id="location"
+              placeholder="e.g. San Francisco, CA"
+              {...form.register('location')}
+            />
+          </div>
           
           <div className="flex justify-end space-x-2 pt-4">
             <Button 
               type="button" 
               variant="outline" 
               onClick={() => onOpenChange(false)}
-              disabled={loading}
+              disabled={addCandidate.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
+            <Button 
+              type="submit" 
+              disabled={addCandidate.isPending}
+              className="bg-black hover:bg-gray-800 text-white"
+            >
+              {addCandidate.isPending ? <LoadingSpinner size="sm" className="mr-2" /> : null}
               Add Candidate
             </Button>
           </div>
