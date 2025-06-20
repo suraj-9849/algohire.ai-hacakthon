@@ -112,7 +112,6 @@ docker-compose down   # Stop Docker containers
 5. Get your config and service account key
 6. Update the `.env` files
 
-- [CI Pipeline Setup](CI-SETUP.md) - Automated testing and quality checks
 
 ---
 
