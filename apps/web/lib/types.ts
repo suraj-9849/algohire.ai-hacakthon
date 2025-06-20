@@ -29,12 +29,16 @@ export interface Message {
 
 export interface Notification {
   id: string
-  userId: string
-  messageId: string
-  candidateId: string
-  candidateName: string
-  content: string
-  senderName: string
-  timestamp: Date
+  message: string
+  type: 'mention' | 'note' | 'candidate' | 'system'
   read: boolean
+  timestamp: any
+  userId: string
+  candidateId?: string
+  candidateName?: string
+  fromUser?: string
+  fromUserName?: string
+  content?: string
+  senderName?: string
+  messageId?: string
 } 

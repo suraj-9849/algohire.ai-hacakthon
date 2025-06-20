@@ -21,6 +21,7 @@ const app = initializeApp(firebaseConfig)
 // Initialize Firebase services
 export const auth = getAuth(app)
 export const firestore = getFirestore(app)
+export const db = firestore // Alias for compatibility
 export const database = getDatabase(app)
 
 // Initialize Analytics (only in browser)

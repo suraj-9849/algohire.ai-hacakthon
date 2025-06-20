@@ -33,6 +33,7 @@ import { AddCandidateDialog } from './AddCandidateDialog'
 import { CandidateNotesDialog } from './CandidateNotesDialog'
 import { NotificationsList } from './NotificationsList'
 import { useCandidates } from '@/hooks/useCandidates'
+import { useNotifications } from '@/hooks/useNotifications'
 import { useAuthContext } from '@/components/providers/AuthProvider'
 import { Candidate } from '@/lib/types'
 
@@ -41,6 +42,7 @@ export function Dashboard() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const { data: candidates = [], isLoading } = useCandidates()
+  const { createDemoNotifications, unreadCount } = useNotifications()
   const { user, logout } = useAuthContext()
 
   const handleCandidateClick = (candidate: Candidate) => {
@@ -69,32 +71,6 @@ export function Dashboard() {
     }
   })
 
-  const stats = [
-    {
-      title: 'Total Candidates',
-      value: candidates.length.toString(),
-      icon: Users,
-      description: 'Active in pipeline'
-    },
-    {
-      title: 'Pending Reviews',
-      value: candidates.filter(c => c.status === 'pending').length.toString(),
-      icon: Clock,
-      description: 'Awaiting evaluation'
-    },
-    {
-      title: 'This Month',
-      value: '12',
-      icon: TrendingUp,
-      description: 'New applications'
-    },
-    {
-      title: 'Interview Rate',
-      value: '78%',
-      icon: BarChart3,
-      description: 'Success metrics'
-    }
-  ]
 
   const filteredCandidates = candidates.filter(candidate =>
     candidate.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -133,9 +109,11 @@ export function Dashboard() {
                 className="relative border-gray-300 hover:bg-gray-50"
               >
                 <Bell className="h-4 w-4" />
-                <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 bg-black text-white text-xs flex items-center justify-center">
-                  3
-                </Badge>
+                {unreadCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 bg-black text-white text-xs flex items-center justify-center">
+                    {unreadCount}
+                  </Badge>
+                )}
               </Button>
 
               <DropdownMenu>
@@ -196,39 +174,7 @@ export function Dashboard() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            {/* Stats Grid */}
-            <motion.div 
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              {stats.map((stat, index) => (
-                <motion.div
-                  key={stat.title}
-                  whileHover={{ y: -2 }}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.1 * index }}
-                >
-                  <Card className="relative overflow-hidden border-gray-200 hover:shadow-lg transition-all duration-300">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium text-gray-600">
-                        {stat.title}
-                      </CardTitle>
-                      <stat.icon className="h-4 w-4 text-gray-400" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-black">{stat.value}</div>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {stat.description}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </motion.div>
-
+           
             {/* Main Dashboard Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Recent Candidates */}
@@ -367,8 +313,20 @@ export function Dashboard() {
           <TabsContent value="notifications" className="space-y-6">
             <Card className="border-gray-200">
               <CardHeader>
-                <CardTitle className="text-black">All Notifications</CardTitle>
-                <CardDescription>Messages where you were mentioned</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-black">All Notifications</CardTitle>
+                    <CardDescription>Messages where you were mentioned</CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={createDemoNotifications}
+                    className="border-gray-300 hover:bg-gray-50"
+                  >
+                    <Bell className="h-4 w-4 mr-2" />
+                    Create Demo Notifications
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <NotificationsList onNotificationClick={handleCandidateClick} />

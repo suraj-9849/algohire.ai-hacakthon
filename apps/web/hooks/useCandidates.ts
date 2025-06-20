@@ -3,6 +3,7 @@ import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, doc, deleteD
 import { firestore } from '@/lib/firebase'
 import { Candidate } from '@/lib/types'
 import { toast } from '@/hooks/useToast'
+import { useAuthContext } from '@/components/providers/AuthProvider'
 
 // Query Keys
 export const candidatesKeys = {
@@ -51,6 +52,7 @@ export function useCandidates() {
 // Add candidate mutation
 export function useAddCandidate() {
   const queryClient = useQueryClient()
+  const { user } = useAuthContext()
   
   return useMutation({
     mutationFn: async (candidateData: Omit<Candidate, 'id' | 'createdAt'>) => {
@@ -58,6 +60,26 @@ export function useAddCandidate() {
         ...candidateData,
         createdAt: new Date(),
       })
+      
+      // Create notification for the current user (so they can see the notification system working)
+      if (user?.id) {
+        try {
+          await addDoc(collection(firestore, 'notifications'), {
+            message: `✨ You successfully added candidate ${candidateData.name}!`,
+            type: 'candidate',
+            read: false,
+            timestamp: new Date(),
+            userId: user.id, // Notify the current user
+            candidateId: docRef.id,
+            candidateName: candidateData.name,
+            fromUser: user.id,
+            fromUserName: user.name || 'You'
+          })
+        } catch (error) {
+          console.log('Failed to create notification:', error)
+        }
+      }
+      
       return docRef.id
     },
     onMutate: async (newCandidate) => {

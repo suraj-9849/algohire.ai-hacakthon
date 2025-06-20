@@ -27,17 +27,6 @@ interface CandidateListProps {
   onCandidateClick?: (candidate: Candidate) => void
 }
 
-// Helper functions
-const getRandomStatus = () => {
-  const statuses = [
-    { label: 'Active', color: 'default', priority: 'high' },
-    { label: 'Interview Scheduled', color: 'secondary', priority: 'high' },
-    { label: 'Under Review', color: 'outline', priority: 'medium' },
-    { label: 'Pending Response', color: 'secondary', priority: 'low' },
-    { label: 'Final Round', color: 'default', priority: 'high' }
-  ] as const
-  return statuses[Math.floor(Math.random() * statuses.length)]
-}
 
 const getInitials = (name: string) => {
   return name.split(' ').map(n => n[0]).join('').toUpperCase()
@@ -112,7 +101,6 @@ export function CandidateList({ candidates, isLoading, searchQuery, onCandidateC
     <div className="space-y-4">
       <AnimatePresence>
         {candidates.map((candidate, index) => {
-          const statusData = getRandomStatus() || { label: 'Active', color: 'default', priority: 'high' }
           
           return (
             <motion.div
@@ -157,12 +145,6 @@ export function CandidateList({ candidates, isLoading, searchQuery, onCandidateC
                               <span>{new Date(candidate.createdAt).toLocaleDateString()}</span>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          {/* Status Badge */}
-                          <Badge variant={statusData.color as any} className="text-xs">
-                            {statusData.label}
-                          </Badge>
                         </div>
                       </div>
 
