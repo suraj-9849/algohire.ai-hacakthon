@@ -11,13 +11,13 @@ interface NotificationsListProps {
 }
 
 export function NotificationsList({ onNotificationClick }: NotificationsListProps): JSX.Element {
-  const { 
-    notifications, 
-    unreadCount, 
-    isLoading, 
-    markAsRead, 
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    markAsRead,
     markAllAsRead,
-    isMarkingAllAsRead 
+    isMarkingAllAsRead
   } = useNotifications()
 
   // Debug logging
@@ -36,7 +36,6 @@ export function NotificationsList({ onNotificationClick }: NotificationsListProp
       position: '',
       phone: '',
       location: '',
-      status: 'new',
       createdAt: new Date(),
       createdBy: notification.fromUser || 'Unknown'
     }
@@ -81,46 +80,41 @@ export function NotificationsList({ onNotificationClick }: NotificationsListProp
           </Button>
         </div>
       )}
-      
+
       {notifications.map((notification) => (
         <div
           key={notification.id}
           onClick={() => handleNotificationClick(notification)}
-          className={`p-3 border rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 hover:shadow-sm ${
-            !notification.read 
-              ? 'bg-blue-50 border-blue-200 shadow-sm' 
+          className={`p-3 border rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50 hover:shadow-sm ${!notification.read
+              ? 'bg-blue-50 border-blue-200 shadow-sm'
               : 'border-gray-200 bg-white'
-          }`}
+            }`}
         >
           <div className="flex items-start space-x-3">
             <div className="flex-shrink-0 mt-1">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                !notification.read ? 'bg-blue-100' : 'bg-gray-100'
-              }`}>
-                <MessageSquare className={`h-4 w-4 ${
-                  !notification.read ? 'text-blue-600' : 'text-gray-400'
-                }`} />
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${!notification.read ? 'bg-blue-100' : 'bg-gray-100'
+                }`}>
+                <MessageSquare className={`h-4 w-4 ${!notification.read ? 'text-blue-600' : 'text-gray-400'
+                  }`} />
               </div>
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <p className={`text-sm font-medium truncate ${
-                  !notification.read ? 'text-gray-900' : 'text-gray-700'
-                }`}>
+                <p className={`text-sm font-medium truncate ${!notification.read ? 'text-gray-900' : 'text-gray-700'
+                  }`}>
                   {notification.type === 'mention' && '📝 Mention'}
                   {notification.type === 'note' && '💬 New Note'}
                   {notification.type === 'candidate' && '👤 New Candidate'}
                   {notification.type === 'system' && '🔔 System'}
-                  {notification.candidateName && ` - ${notification.candidateName}`}
+                  {(notification as any).candidateName && ` - ${(notification as any).candidateName}`}
                 </p>
                 {!notification.read && (
                   <div className="h-2 w-2 bg-blue-600 rounded-full flex-shrink-0 animate-pulse"></div>
                 )}
               </div>
-              <p className={`text-sm mt-1 ${
-                !notification.read ? 'text-gray-700' : 'text-gray-500'
-              }`}>
-                {notification.message || notification.content || 'No message content'}
+              <p className={`text-sm mt-1 ${!notification.read ? 'text-gray-700' : 'text-gray-500'
+                }`}>
+                {notification.message || (notification as any).content || 'No message content'}
               </p>
               {notification.fromUserName && (
                 <p className="text-xs text-gray-500 mt-1">

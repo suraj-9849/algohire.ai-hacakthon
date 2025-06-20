@@ -74,14 +74,14 @@ export function AuthPage() {
           className="w-full max-w-md"
         >
           {/* Logo */}
-          <motion.div 
+          <motion.div
             className="text-center mb-8"
             whileHover={{ scale: 1.02 }}
           >
             <div className="w-12 h-12 bg-black rounded-2xl mx-auto mb-4 flex items-center justify-center">
               <span className="text-white font-bold text-xl">H</span>
             </div>
-            <h1 className="text-3xl font-bold text-black">HireTracker</h1>
+            <h1 className="text-3xl font-bold text-black">AlgoHire</h1>
             <p className="text-gray-600 mt-2">Professional Candidate Management</p>
           </motion.div>
 
@@ -92,8 +92,8 @@ export function AuthPage() {
                 {isLogin ? 'Welcome Back' : 'Create Account'}
               </CardTitle>
               <CardDescription className="text-center text-gray-600">
-                {isLogin 
-                  ? 'Sign in to your account to continue' 
+                {isLogin
+                  ? 'Sign in to your account to continue'
                   : 'Join thousands of professionals'
                 }
               </CardDescription>
@@ -203,7 +203,7 @@ export function AuthPage() {
           </Card>
 
           {/* Trust Indicators */}
-          <motion.div 
+          <motion.div
             className="mt-8 text-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -273,25 +273,6 @@ export function AuthPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.8 }}
           >
-            <div className="text-center">
-              <div className="flex justify-center space-x-2 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="w-2 h-2 bg-black rounded-full" />
-                ))}
-              </div>
-              <p className="text-gray-600 italic mb-4">
-                "HireTracker has transformed our recruitment process. We've reduced time-to-hire by 40%."
-              </p>
-              <div className="flex items-center justify-center space-x-3">
-                <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-semibold text-gray-600">JS</span>
-                </div>
-                <div>
-                  <p className="font-semibold text-black">Jane Smith</p>
-                  <p className="text-sm text-gray-500">Head of Talent, TechCorp</p>
-                </div>
-              </div>
-            </div>
           </motion.div>
         </motion.div>
       </div>
