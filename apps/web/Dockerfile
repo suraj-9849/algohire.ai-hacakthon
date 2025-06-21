@@ -2,13 +2,19 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml* ./
+# Copy workspace files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages ./packages
+COPY apps ./apps
 
+# Install pnpm and dependencies
 RUN npm install -g pnpm
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --force
 
-COPY . .
+# Set working directory to the web app
+WORKDIR /app/apps/web
 
+# Build the web app
 RUN pnpm build
 
 EXPOSE 3000

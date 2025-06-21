@@ -18,7 +18,9 @@ services:
 
   # Frontend - Next.js App with Firebase
   frontend:
-    build: ./apps/web
+    build: 
+      context: .
+      dockerfile: apps/web/Dockerfile
     ports:
       - "3000:3000"
     environment:
