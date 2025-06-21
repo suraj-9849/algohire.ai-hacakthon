@@ -47,11 +47,6 @@ export function AuthPage() {
 
   const features = [
     {
-      icon: Shield,
-      title: 'Secure & Reliable',
-      description: 'Enterprise-grade security with end-to-end encryption'
-    },
-    {
       icon: Users,
       title: 'Team Collaboration',
       description: 'Seamless collaboration tools for hiring teams'
@@ -65,7 +60,6 @@ export function AuthPage() {
 
   return (
     <div className="min-h-screen bg-white flex">
-      {/* Left Side - Form */}
       <div className="flex-1 flex items-center justify-center p-8">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
@@ -73,15 +67,14 @@ export function AuthPage() {
           transition={{ duration: 0.6 }}
           className="w-full max-w-md"
         >
-          {/* Logo */}
           <motion.div
             className="text-center mb-8"
             whileHover={{ scale: 1.02 }}
           >
             <div className="w-12 h-12 bg-black rounded-2xl mx-auto mb-4 flex items-center justify-center">
-              <span className="text-white font-bold text-xl">H</span>
+              <span className="text-white font-bold text-xl">A</span>
             </div>
-            <h1 className="text-3xl font-bold text-black">AlgoHire</h1>
+            <h1 className="text-3xl font-bold text-black">AlgoHire Notes</h1>
             <p className="text-gray-600 mt-2">Professional Candidate Management</p>
           </motion.div>
 
@@ -94,7 +87,7 @@ export function AuthPage() {
               <CardDescription className="text-center text-gray-600">
                 {isLogin
                   ? 'Sign in to your account to continue'
-                  : 'Join thousands of professionals'
+                  : 'SignUp to your account to continue'
                 }
               </CardDescription>
             </CardHeader>
@@ -201,30 +194,9 @@ export function AuthPage() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Trust Indicators */}
-          <motion.div
-            className="mt-8 text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-          >
-            <p className="text-sm text-gray-500 mb-4">Trusted by 10,000+ professionals</p>
-            <div className="flex justify-center space-x-6 text-gray-400">
-              <div className="flex items-center space-x-2">
-                <Check className="h-4 w-4" />
-                <span className="text-xs">GDPR Compliant</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Shield className="h-4 w-4" />
-                <span className="text-xs">SOC 2 Certified</span>
-              </div>
-            </div>
-          </motion.div>
         </motion.div>
       </div>
 
-      {/* Right Side - Features */}
       <div className="hidden lg:flex flex-1 bg-gray-50 items-center justify-center p-8">
         <motion.div
           initial={{ opacity: 0, x: 20 }}
@@ -266,14 +238,6 @@ export function AuthPage() {
               </motion.div>
             ))}
           </div>
-
-          <motion.div
-            className="mt-12 p-6 bg-white rounded-2xl shadow-sm border border-gray-200"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.8 }}
-          >
-          </motion.div>
         </motion.div>
       </div>
     </div>

@@ -80,15 +80,9 @@ export default function LandingPage() {
       gradient: 'from-gray-700 to-gray-900'
     },
     {
-      icon: Shield,
-      title: 'Enterprise Security',
-      description: 'Bank-level encryption, SOC 2 compliance, and advanced privacy controls.',
-      gradient: 'from-gray-900 to-black'
-    },
-    {
       icon: Target,
       title: 'AI-Powered Insights',
-      description: 'Get intelligent suggestions and analytics to optimize your hiring process.',
+      description: 'Get intelligent notes summariser to optimize your hiring process.',
       gradient: 'from-gray-600 to-gray-800'
     }
   ]
@@ -492,7 +486,8 @@ export default function LandingPage() {
               </span>
             </h2>
             <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-              Join thousands of companies already using AlgoHire to make better hiring decisions faster.
+            Real-time collaboration, intelligent candidate management, and seamless team coordination
+            all in one powerful platform
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <motion.div

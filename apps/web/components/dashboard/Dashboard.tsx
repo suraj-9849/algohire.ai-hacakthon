@@ -104,7 +104,7 @@ export default function Dashboard() {
                   <span className="text-white font-bold text-sm">A</span>
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">AlgoHire</h1>
+                  <h1 className="text-xl font-bold text-gray-900">AlgoHire Notes</h1>
                   <p className="text-sm text-gray-500">Collaborative Candidate Notes</p>
                 </div>
               </div>
