@@ -32,6 +32,7 @@ const getInitials = (name: string) => {
   return name.split(' ').map(n => n[0]).join('').toUpperCase()
 }
 
+
 export function CandidateList({ candidates, isLoading, searchQuery, onCandidateClick }: CandidateListProps) {
   if (isLoading) {
     return (
@@ -128,13 +129,15 @@ export function CandidateList({ candidates, isLoading, searchQuery, onCandidateC
                       </Avatar>
                     </motion.div>
 
-                    {/* Main Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h3 className="text-xl font-bold text-black mb-1 group-hover:text-gray-700 transition-colors">
-                            {candidate.name}
-                          </h3>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-1">
+                            <h3 className="text-xl font-bold text-black group-hover:text-gray-700 transition-colors">
+                              {candidate.name}
+                            </h3>
+                           
+                          </div>
                           <div className="flex items-center space-x-4 text-sm text-gray-600">
                             <div className="flex items-center space-x-1">
                               <Mail className="h-4 w-4 text-gray-400" />
@@ -168,22 +171,7 @@ export function CandidateList({ candidates, isLoading, searchQuery, onCandidateC
                         )}
                       </div>
 
-                      {/* Metadata Row */}
                       <div className="flex items-center justify-between text-xs text-gray-500">
-                        <div className="flex items-center space-x-4">
-                          <div className="flex items-center space-x-1">
-                            <Eye className="h-3 w-3" />
-                            <span>{Math.floor(Math.random() * 50) + 10} views</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <MessageCircle className="h-3 w-3" />
-                            <span>{Math.floor(Math.random() * 8)} notes</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Clock className="h-3 w-3" />
-                            <span>Updated {Math.floor(Math.random() * 7) + 1}d ago</span>
-                          </div>
-                        </div>
                         <div className="text-xs text-gray-500">
                           <span className="font-medium">Click to view notes</span>
                         </div>

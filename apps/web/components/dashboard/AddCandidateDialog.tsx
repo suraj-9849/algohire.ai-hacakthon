@@ -17,6 +17,7 @@ const candidateSchema = z.object({
   position: z.string().min(2, 'Position must be at least 2 characters'),
   phone: z.string().optional(),
   location: z.string().optional(),
+  status: z.enum(['pending', 'reviewed', 'interviewed', 'hired', 'rejected']).default('pending'),
 })
 
 type CandidateForm = z.infer<typeof candidateSchema>
@@ -38,6 +39,7 @@ export function AddCandidateDialog({ open, onOpenChange }: AddCandidateDialogPro
       position: '',
       phone: '',
       location: '',
+      status: 'pending' as const,
     },
   })
 
@@ -50,6 +52,7 @@ export function AddCandidateDialog({ open, onOpenChange }: AddCandidateDialogPro
         name: data.name,
         email: data.email,
         position: data.position,
+        status: data.status,
       }
       
       // Only add optional fields if they have values
@@ -141,6 +144,26 @@ export function AddCandidateDialog({ open, onOpenChange }: AddCandidateDialogPro
               placeholder="e.g. San Francisco, CA"
               {...form.register('location')}
             />
+          </div>
+
+          <div>
+            <Label htmlFor="status">Status</Label>
+            <select
+              id="status"
+              {...form.register('status')}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+            >
+              <option value="pending">Pending</option>
+              <option value="reviewed">Reviewed</option>
+              <option value="interviewed">Interviewed</option>
+              <option value="hired">Hired</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            {form.formState.errors.status && (
+              <p className="text-sm text-destructive mt-1">
+                {form.formState.errors.status.message}
+              </p>
+            )}
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
