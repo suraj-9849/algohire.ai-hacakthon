@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthContext } from '@/components/providers/AuthProvider'
-import { Dashboard } from '@/components/dashboard/Dashboard'
+import Dashboard from '@/components/dashboard/Dashboard'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 export default function DashboardPage() {

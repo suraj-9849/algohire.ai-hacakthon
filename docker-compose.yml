@@ -1,20 +1,11 @@
 version: '3.8'
 
 services:
-  # Frontend - Next.js App
+  # Frontend - Next.js App with Firebase
   frontend:
     build: ./apps/web
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5001/api
-    depends_on:
-      - backend
-
-  # Backend - Node.js API
-  backend:
-    build: ./apps/backend
-    ports:
-      - "5001:5001"
-    volumes:
-      - ./apps/backend/.env:/app/.env
+      # Firebase configuration will be handled via .env files
+      - NODE_ENV=production

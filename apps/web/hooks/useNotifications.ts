@@ -2,22 +2,10 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
-import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, doc, where } from 'firebase/firestore'
-import { firestore } from '@/lib/firebase'
+import { notificationsService } from '@/lib/firebase-services' 
+import { Notification } from '@/lib/types'
 import { useAuthContext } from '@/components/providers/AuthProvider'
 import { useToast } from '@/hooks/useToast'
-
-export interface Notification {
-  id: string
-  message: string
-  type: 'mention' | 'note' | 'candidate' | 'system'
-  read: boolean
-  timestamp: any
-  userId: string
-  candidateId?: string
-  fromUser?: string
-  fromUserName?: string
-}
 
 const notificationQueryKeys = {
   all: ['notifications'] as const,
@@ -32,15 +20,8 @@ const createNotificationSound = () => {
   
   const playNotificationSound = () => {
     // Create a simple pleasant notification sound
-    const oscillator = audioContext.createOscillator()
-    const gainNode = audioContext.createGain()
-    
-    oscillator.connect(gainNode)
-    gainNode.connect(audioContext.destination)
-    
-    // Create a pleasant notification sound (C5 -> E5 -> G5)
     const frequencies = [523.25, 659.25, 783.99] // C5, E5, G5
-    let startTime = audioContext.currentTime
+    const startTime = audioContext.currentTime
     
     frequencies.forEach((freq, index) => {
       const osc = audioContext.createOscillator()
@@ -65,7 +46,7 @@ const createNotificationSound = () => {
   return playNotificationSound
 }
 
-export const useNotifications = () => {
+export const useNotifications = (unreadOnly = false) => {
   const { user } = useAuthContext()
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -79,176 +60,121 @@ export const useNotifications = () => {
     }
   }, [])
 
+  // Firebase real-time subscription for notifications
+  useEffect(() => {
+    if (!user?.id) return
+
+    const unsubscribe = notificationsService.subscribeToUserNotifications(
+      user.id,
+      (notifications) => {
+        // Update the query cache with real-time data
+        queryClient.setQueryData(
+          notificationQueryKeys.list(user.id),
+          notifications
+        )
+
+        // Play notification sound for new notifications
+        if (notifications.length > lastNotificationCountRef.current && soundRef.current) {
+          soundRef.current()
+        }
+        lastNotificationCountRef.current = notifications.length
+
+        // Update unread count
+        const unreadCount = notifications.filter(n => !n.read).length
+        queryClient.setQueryData(
+          notificationQueryKeys.unread(user.id),
+          { unreadCount }
+        )
+
+        // Force refetch to ensure data is fresh
+        queryClient.invalidateQueries({ queryKey: notificationQueryKeys.list(user.id) })
+      }
+    )
+
+    return unsubscribe
+  }, [user?.id, queryClient])
+
+  // Fetch notifications using Firebase
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: notificationQueryKeys.list(user?.id || ''),
     queryFn: async () => {
       if (!user?.id) return []
-      
-      const notificationsRef = collection(firestore, 'notifications')
-      const q = query(
-        notificationsRef,
-        where('userId', '==', user.id),
-        orderBy('timestamp', 'desc')
-      )
-      
-      return new Promise<Notification[]>((resolve, reject) => {
-        let isResolved = false
-        
-        const unsubscribe = onSnapshot(q, 
-          (snapshot) => {
-            const notificationsList = snapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            })) as Notification[]
-            
-            // Check if we have new notifications and play sound (only after initial load)
-            const currentCount = notificationsList.length
-            const unreadCount = notificationsList.filter(n => !n.read).length
-            
-            if (isResolved && currentCount > lastNotificationCountRef.current && lastNotificationCountRef.current >= 0) {
-              // Play notification sound for new notifications
-              if (soundRef.current && unreadCount > 0) {
-                try {
-                  soundRef.current()
-                } catch (error) {
-                  console.log('Could not play notification sound:', error)
-                }
-              }
-              
-              // Show toast for new notifications
-              const newNotifications = notificationsList.slice(0, currentCount - lastNotificationCountRef.current)
-              newNotifications.forEach(notification => {
-                if (!notification.read) {
-                  toast({
-                    title: "New Notification",
-                    description: notification.message,
-                    variant: "default",
-                  })
-                }
-              })
-            }
-            
-            lastNotificationCountRef.current = currentCount
-            
-            if (!isResolved) {
-              isResolved = true
-              resolve(notificationsList)
-            }
-            
-            // Update the query cache with new data
-            queryClient.setQueryData(notificationQueryKeys.list(user?.id || ''), notificationsList)
-          },
-          (error) => {
-            if (!isResolved) {
-              reject(error)
-            }
-          }
-        )
-        
-        // Return cleanup function
-        return () => unsubscribe()
-      })
+      return notificationsService.getUserNotifications(user.id, unreadOnly)
     },
     enabled: !!user?.id,
-    staleTime: 0, // Always fetch fresh data
-    gcTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    retry: 3,
+    retryDelay: 1000,
   })
 
-  const unreadCount = notifications.filter(n => !n.read).length
+  // Fetch unread count
+  const { data: unreadCountData } = useQuery({
+    queryKey: notificationQueryKeys.unread(user?.id || ''),
+    queryFn: async () => {
+      if (!user?.id) return { unreadCount: 0 }
+      const unreadCount = await notificationsService.getUnreadCount(user.id)
+      return { unreadCount }
+    },
+    enabled: !!user?.id,
+    staleTime: 10 * 1000, // 10 seconds
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+    retry: 3,
+  })
+
+  const unreadCount = unreadCountData?.unreadCount || 0
 
   const markAsReadMutation = useMutation({
     mutationFn: async (notificationId: string) => {
-      const notificationRef = doc(firestore, 'notifications', notificationId)
-      await updateDoc(notificationRef, { read: true })
+      await notificationsService.markNotificationAsRead(notificationId)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationQueryKeys.list(user?.id || '') })
-    }
+      toast({
+        title: 'Marked as read',
+        description: 'Notification has been marked as read',
+        variant: 'default',
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to mark notification as read',
+        variant: 'destructive',
+      })
+    },
   })
 
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      const unreadNotifications = notifications.filter(n => !n.read)
-      const promises = unreadNotifications.map(notification => {
-        const notificationRef = doc(firestore, 'notifications', notification.id)
-        return updateDoc(notificationRef, { read: true })
-      })
-      await Promise.all(promises)
+      if (!user?.id) throw new Error('User not authenticated')
+      await notificationsService.markAllNotificationsAsRead(user.id)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationQueryKeys.list(user?.id || '') })
-    }
-  })
-
-  const addNotificationMutation = useMutation({
-    mutationFn: async (notification: Omit<Notification, 'id' | 'timestamp'>) => {
-      const notificationsRef = collection(firestore, 'notifications')
-      await addDoc(notificationsRef, {
-        ...notification,
-        timestamp: new Date()
+      toast({
+        title: 'Success',
+        description: 'All notifications marked as read',
+        variant: 'default',
       })
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationQueryKeys.all })
-    }
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to mark all notifications as read',
+        variant: 'destructive',
+      })
+    },
   })
-
-  // Demo function to create test notifications
-  const createDemoNotifications = async () => {
-    if (!user?.id) return
-    
-    const demoNotifications = [
-      {
-        message: "🎉 Welcome to AlgoHire! Your notification system is working perfectly.",
-        type: 'system' as const,
-        read: false,
-        userId: user.id,
-        fromUser: 'system',
-        fromUserName: 'AlgoHire'
-      },
-      {
-        message: "👋 You were mentioned in a note about Sarah Johnson",
-        type: 'mention' as const,
-        read: false,
-        userId: user.id,
-        candidateId: 'demo-1',
-        candidateName: 'Sarah Johnson',
-        fromUser: 'demo-user',
-        fromUserName: 'Demo Recruiter'
-      },
-      {
-        message: "💬 New note added for candidate Mike Chen",
-        type: 'note' as const,
-        read: false,
-        userId: user.id,
-        candidateId: 'demo-2',
-        candidateName: 'Mike Chen',
-        fromUser: 'demo-user-2',
-        fromUserName: 'Jane Smith'
-      }
-    ]
-
-    try {
-      for (const notification of demoNotifications) {
-        await addDoc(collection(firestore, 'notifications'), {
-          ...notification,
-          timestamp: new Date()
-        })
-      }
-    } catch (error) {
-      console.error('Failed to create demo notifications:', error)
-    }
-  }
 
   return {
     notifications,
-    unreadCount,
     isLoading,
+    unreadCount,
     markAsRead: markAsReadMutation.mutate,
     markAllAsRead: markAllAsReadMutation.mutate,
-    addNotification: addNotificationMutation.mutate,
-    createDemoNotifications,
     isMarkingAsRead: markAsReadMutation.isPending,
-    isMarkingAllAsRead: markAllAsReadMutation.isPending
+    isMarkingAllAsRead: markAllAsReadMutation.isPending,
   }
 } 

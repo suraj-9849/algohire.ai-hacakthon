@@ -1,17 +1,17 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { collection, query, onSnapshot, orderBy, addDoc, where, getDocs } from 'firebase/firestore'
-import { ref, push, onValue, off } from 'firebase/database'
 import { Send, AtSign } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { firestore, database } from '@/lib/firebase'
 import { useAuthContext } from '@/components/providers/AuthProvider'
-import { Candidate, Message, User } from '@/lib/types'
+import { Candidate, User } from '@/lib/types'
 import { toast } from '@/hooks/useToast'
+import { messagingService, Message } from '@/lib/messaging-service'
+import { findUsersByQuery } from '@/lib/firebase-services'
+import { Badge } from '@/components/ui/badge'
 
 interface CandidateNotesDialogProps {
   candidate: Candidate
@@ -31,55 +31,53 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Load all users for mentions
+  // Load users for autocomplete when dialog opens
   useEffect(() => {
-    const loadUsers = async () => {
-      const usersSnapshot = await getDocs(collection(firestore, 'users'))
-      const usersList = usersSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date()
-      })) as User[]
-      setUsers(usersList)
+    if (open) {
+      loadUsers()
     }
-    loadUsers()
-  }, [])
+  }, [open])
 
-  // Real-time messages listener
+  const loadUsers = async (query = '') => {
+    try {
+      const usersList = await findUsersByQuery(query)
+      setUsers(usersList)
+    } catch (error) {
+      console.error('Error loading users:', error)
+    }
+  }
+
+  // Real-time messages subscription
   useEffect(() => {
     if (!open || !candidate.id) return
 
-    const messagesRef = ref(database, `messages/${candidate.id}`)
+    setLoading(true)
 
-    const handleMessages = (snapshot: any) => {
-      if (snapshot.exists()) {
-        const messagesData = snapshot.val()
-        const messagesList = Object.keys(messagesData).map(key => ({
-          id: key,
-          ...messagesData[key],
-          timestamp: new Date(messagesData[key].timestamp)
-        })).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-
-        setMessages(messagesList)
-      } else {
-        setMessages([])
+    const unsubscribe = messagingService.subscribeToMessages(
+      candidate.id,
+      (newMessages) => {
+        setMessages(newMessages)
+        setLoading(false)
       }
-      setLoading(false)
-    }
+    )
 
-    onValue(messagesRef, handleMessages)
+    // Add timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      setLoading(false)
+    }, 5000)
 
     return () => {
-      off(messagesRef, 'value', handleMessages)
+      unsubscribe()
+      clearTimeout(timeout)
     }
   }, [open, candidate.id])
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Handle @mentions
+  // Handle @mentions autocomplete
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setNewMessage(value)
@@ -89,12 +87,15 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
     const textBeforeCursor = value.substring(0, cursorPosition)
     const atIndex = textBeforeCursor.lastIndexOf('@')
 
-    if (atIndex !== -1 && atIndex === textBeforeCursor.length - 1) {
-      setShowMentions(true)
-      setMentionFilter('')
-    } else if (atIndex !== -1 && textBeforeCursor.substring(atIndex + 1).indexOf(' ') === -1) {
-      setShowMentions(true)
-      setMentionFilter(textBeforeCursor.substring(atIndex + 1))
+    if (atIndex !== -1) {
+      const searchTerm = textBeforeCursor.substring(atIndex + 1)
+      if (searchTerm.length === 0 || searchTerm.indexOf(' ') === -1) {
+        setShowMentions(true)
+        setMentionFilter(searchTerm)
+        loadUsers(searchTerm)
+      } else {
+        setShowMentions(false)
+      }
     } else {
       setShowMentions(false)
     }
@@ -104,117 +105,48 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
     const atIndex = newMessage.lastIndexOf('@')
     if (atIndex !== -1) {
       const beforeAt = newMessage.substring(0, atIndex)
-      const afterMention = newMessage.substring(atIndex + mentionFilter.length + 1)
-      setNewMessage(`${beforeAt}@${mentionUser.name} ${afterMention}`)
+      const afterAt = newMessage.substring(atIndex + mentionFilter.length + 1)
+      setNewMessage(`${beforeAt}@${mentionUser.name} ${afterAt}`)
     }
     setShowMentions(false)
     inputRef.current?.focus()
   }
 
-  const extractMentions = (text: string): string[] => {
-    // console.log('Starting mention extraction for text:', text)
-    // console.log('Available users:', users.map(u => ({ id: u.id, name: u.name })))
-
-    // Simple approach: split by spaces and find @mentions
-    const mentions: string[] = []
-    const words = text.split(/\s+/)
-
-    for (const word of words) {
-      if (word.startsWith('@')) {
-        const username = word.slice(1).toLowerCase().trim()
-        // console.log('Checking mention for username:', username)
-
-        // Find user by name (case insensitive)
-        const mentionedUser = users.find(u =>
-          u.name && u.name.toLowerCase().trim() === username
-        )
-
-        if (mentionedUser?.id) {
-          // console.log('Found user:', mentionedUser.name, 'with ID:', mentionedUser.id)
-          mentions.push(mentionedUser.id)
-        } else {
-          // console.log('User not found for username:', username)
-          // console.log('usernames:', users.map(u => u.name?.toLowerCase()))
-        }
-      }
-    }
-
-    // console.log('Final mentions array:', mentions)
-    return mentions
-  }
-
   const sendMessage = async () => {
-    if (!newMessage.trim() || !user) return
+    if (!newMessage.trim() || !user || sending) return
 
     setSending(true)
     try {
-      const mentions = extractMentions(newMessage)
-      const messageData = {
+      await messagingService.sendMessage({
         candidateId: candidate.id,
         content: newMessage.trim(),
         senderId: user.id,
         senderName: user.name,
-        timestamp: Date.now(),
-        mentions
-      }
-
-      // Send to Firebase Realtime Database for real-time updates
-      await push(ref(database, `messages/${candidate.id}`), messageData)
-
-      // Create notifications for mentioned users
-      if (mentions.length > 0) {
-        // console.log('Creating notifications for', mentions.length, 'users:', mentions)
-
-        for (const mentionedUserId of mentions) {
-          try {
-            // Don't notify yourself
-            if (mentionedUserId === user.id) {
-              // console.log('Skipping self-notification for:', mentionedUserId)
-              continue
-            }
-
-            const notificationData = {
-              userId: mentionedUserId,
-              messageId: messageData.timestamp.toString(),
-              candidateId: candidate.id,
-              candidateName: candidate.name,
-              content: newMessage.trim(),
-              senderName: user.name,
-              timestamp: new Date(),
-              read: false
-            }
-
-            // console.log('Creating notification for user:', mentionedUserId)
-            // console.log('Notification data:', notificationData)
-
-            const notificationRef = await addDoc(collection(firestore, 'notifications'), notificationData)
-            // console.log('Notification created successfully! ID:', notificationRef.id)
-
-            toast({
-              title: "Mention sent!",
-              description: `Notified user about your message`,
-            })
-
-          } catch (notificationError) {
-            // // console.error('Error creating notification for user', mentionedUserId, ':', notificationError)
-            toast({
-              variant: "destructive",
-              title: "Notification failed",
-              description: "Could not send notification to mentioned user",
-            })
-          }
-        }
-      } else {
-        // console.log('No mentions found, skipping notification creation')
-      }
+        candidateName: candidate.name
+      })
 
       setNewMessage('')
-      setShowMentions(false)
+      
+      toast({
+        title: "Message sent",
+        description: "Your note has been added to the candidate.",
+      })
+
+      // Check if there were mentions
+      const mentionCount = (newMessage.match(/@\w+/g) || []).length
+      if (mentionCount > 0) {
+        toast({
+          title: "Mentions sent",
+          description: `Notified ${mentionCount} user(s) about your message.`,
+        })
+      }
+
     } catch (error: any) {
+      console.error('Error sending message:', error)
       toast({
         variant: "destructive",
-        title: "Error sending message",
-        description: error.message || "Please try again.",
+        title: "Failed to send message",
+        description: error.message || "Something went wrong while sending your message.",
       })
     } finally {
       setSending(false)
@@ -228,98 +160,150 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
     }
   }
 
-  const filteredUsers = users.filter(u =>
-    u.id !== user?.id &&
-    u.name.toLowerCase().includes(mentionFilter.toLowerCase())
-  )
-
   const renderMessage = (message: Message) => {
-    const isOwnMessage = message.senderId === user?.id
+    const isCurrentUser = message.senderId === user?.id
+    
+    // Split text by mentions and render with proper components
+    const renderMessageContent = (text: string) => {
+      const mentionRegex = /@([a-zA-Z0-9_\s]+)(?=\s|$|[.,!?])/g
+      const parts = []
+      let lastIndex = 0
+      let match
 
-    // Highlight mentions in message content
-    const highlightMentions = (text: string) => {
-      return text.replace(/@(\w+(?:\s+\w+)*)/g, '<span class="bg-blue-100 text-blue-800 px-1 rounded">@$1</span>')
+      while ((match = mentionRegex.exec(text)) !== null) {
+        // Add text before mention
+        if (match.index > lastIndex) {
+          parts.push(text.slice(lastIndex, match.index))
+        }
+        
+        // Add mention as Badge component
+        parts.push(
+          <Badge 
+            key={`mention-${match.index}`} 
+            variant="secondary" 
+            className="bg-blue-100 text-blue-600 hover:bg-blue-200 px-1 py-0 text-xs font-semibold"
+          >
+            @{match[1]}
+          </Badge>
+        )
+        
+        lastIndex = match.index + match[0].length
+      }
+      
+      // Add remaining text
+      if (lastIndex < text.length) {
+        parts.push(text.slice(lastIndex))
+      }
+      
+      return parts.length > 0 ? parts : [text]
     }
 
     return (
       <div
         key={message.id}
-        className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-4`}
+        className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} mb-4`}
       >
-        <div
-          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${isOwnMessage
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-gray-100 text-gray-900'
+        <div className={`max-w-[70%] ${isCurrentUser ? 'order-2' : 'order-1'}`}>
+          <div
+            className={`p-3 rounded-lg ${
+              isCurrentUser
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-800'
             }`}
-        >
-          <div className="text-xs opacity-75 mb-1">
-            {message.senderName} • {message.timestamp.toLocaleTimeString()}
+          >
+            <div className="text-sm">
+              {renderMessageContent(message.content)}
+            </div>
           </div>
           <div
-            dangerouslySetInnerHTML={{
-              __html: highlightMentions(message.content)
-            }}
-          />
+            className={`text-xs text-gray-500 mt-1 ${
+              isCurrentUser ? 'text-right' : 'text-left'
+            }`}
+          >
+            {isCurrentUser ? 'You' : message.senderName} • {message.timestamp.toLocaleTimeString()}
+          </div>
         </div>
       </div>
     )
   }
 
+  const filteredUsers = users.filter(u => 
+    u.name?.toLowerCase().includes(mentionFilter.toLowerCase()) && u.id !== user?.id
+  )
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] h-[600px] flex flex-col">
+      <DialogContent className="max-w-2xl h-[600px] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Notes for {candidate.name}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            Notes for {candidate.name}
+            <span className="text-sm text-gray-500">({candidate.email})</span>
+          </DialogTitle>
         </DialogHeader>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 border rounded-lg bg-gray-50">
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto p-4 bg-gray-50 rounded-lg">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <LoadingSpinner />
+              <span className="ml-2">Loading messages for {candidate.name}...</span>
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              No messages yet. Start the conversation!
+            <div className="text-center text-gray-500 py-8">
+              <p>No messages yet for {candidate.name}.</p>
+              <p className="text-sm">Start the conversation by sending the first note!</p>
             </div>
           ) : (
             <div>
+              <div className="text-xs text-gray-400 mb-2">
+                {messages.length} message{messages.length !== 1 ? 's' : ''} for {candidate.name}
+              </div>
               {messages.map(renderMessage)}
-              <div ref={messagesEndRef} />
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* Mentions Dropdown */}
+        {/* Mention Suggestions */}
         {showMentions && filteredUsers.length > 0 && (
-          <div className="border rounded-lg bg-white shadow-lg max-h-40 overflow-y-auto">
-            {filteredUsers.map(mentionUser => (
-              <div
-                key={mentionUser.id}
-                onClick={() => insertMention(mentionUser)}
-                className="p-2 hover:bg-gray-100 cursor-pointer flex items-center space-x-2"
+          <div className="bg-white border rounded-lg shadow-lg p-2 mb-2 max-h-40 overflow-y-auto">
+            <div className="text-xs text-gray-500 mb-2 px-2">Mention someone:</div>
+            {filteredUsers.map((user) => (
+              <button
+                key={user.id}
+                className="w-full text-left p-2 hover:bg-gray-100 rounded flex items-center gap-2"
+                onClick={() => insertMention(user)}
               >
-                <AtSign className="h-4 w-4 text-gray-400" />
-                <span>{mentionUser.name}</span>
-                <span className="text-sm text-gray-500">({mentionUser.email})</span>
-              </div>
+                <AtSign size={12} className="text-blue-500" />
+                <span className="font-medium">{user.name}</span>
+                <span className="text-xs text-gray-500">({user.email})</span>
+              </button>
             ))}
           </div>
         )}
 
         {/* Message Input */}
-        <div className="flex space-x-2">
+        <div className="flex gap-2">
           <Input
             ref={inputRef}
             value={newMessage}
             onChange={handleInputChange}
             onKeyPress={handleKeyPress}
-            placeholder="Type your message... Use @ to mention someone"
+            placeholder="Type your note... Use @ to mention someone"
             disabled={sending}
+            className="flex-1"
           />
-          <Button onClick={sendMessage} disabled={sending || !newMessage.trim()}>
-            {sending ? <LoadingSpinner size="sm" /> : <Send className="h-4 w-4" />}
+          <Button 
+            onClick={sendMessage} 
+            disabled={!newMessage.trim() || sending}
+            size="icon"
+          >
+            {sending ? <LoadingSpinner size="sm" /> : <Send size={16} />}
           </Button>
+        </div>
+
+        <div className="text-xs text-gray-500 mt-1">
+          Tip: Use @username to mention team members and notify them about this candidate
         </div>
       </DialogContent>
     </Dialog>

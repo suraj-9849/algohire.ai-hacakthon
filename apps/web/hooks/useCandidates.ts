@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { collection, query, onSnapshot, orderBy, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore'
-import { firestore } from '@/lib/firebase'
+import { useEffect } from 'react'
+import { candidatesService, createCandidateNotification, createCandidateNotificationForAllUsers } from '@/lib/firebase-services'
 import { Candidate } from '@/lib/types'
 import { toast } from '@/hooks/useToast'
 import { useAuthContext } from '@/components/providers/AuthProvider'
@@ -9,43 +9,54 @@ import { useAuthContext } from '@/components/providers/AuthProvider'
 export const candidatesKeys = {
   all: ['candidates'] as const,
   lists: () => [...candidatesKeys.all, 'list'] as const,
-  list: (filters: string) => [...candidatesKeys.lists(), { filters }] as const,
+  list: (userId: string, search: string = '') => [...candidatesKeys.lists(), { userId, search }] as const,
   details: () => [...candidatesKeys.all, 'detail'] as const,
   detail: (id: string) => [...candidatesKeys.details(), id] as const,
 }
 
-// Real-time candidates hook with React Query
-export function useCandidates() {
-  return useQuery({
-    queryKey: candidatesKeys.lists(),
-    queryFn: () => {
-      return new Promise<Candidate[]>((resolve, reject) => {
-        const q = query(
-          collection(firestore, 'candidates'),
-          orderBy('createdAt', 'desc')
-        )
+// Main candidates hook with Firebase real-time updates
+export function useCandidates(search: string = '') {
+  const { user } = useAuthContext()
+  const queryClient = useQueryClient()
 
-        const unsubscribe = onSnapshot(q, 
-          (snapshot) => {
-            const candidatesList = snapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data(),
-              createdAt: doc.data().createdAt?.toDate() || new Date()
-            })) as Candidate[]
-            
-            unsubscribe() // Clean up listener for this query
-            resolve(candidatesList)
-          },
-          (error) => {
-            reject(error)
-          }
-        )
-      })
+  // Firebase real-time subscription to ALL candidates
+  useEffect(() => {
+    if (!user?.id) return
+
+    const unsubscribe = candidatesService.subscribeToAllCandidates(
+      (candidates) => {
+        // Filter candidates based on search
+        const filteredCandidates = candidates.filter(candidate => {
+          if (!search) return true
+          return (
+            candidate.name.toLowerCase().includes(search.toLowerCase()) ||
+            candidate.email.toLowerCase().includes(search.toLowerCase()) ||
+            (candidate.position && candidate.position.toLowerCase().includes(search.toLowerCase()))
+          )
+        })
+        
+        // Update ALL relevant query keys to ensure data is available everywhere
+        queryClient.setQueryData(candidatesKeys.list(user.id, search), filteredCandidates)
+        queryClient.setQueryData(candidatesKeys.list(user.id, ''), candidates) // Also update the base query
+      }
+    )
+
+    return unsubscribe
+  }, [user?.id, search, queryClient])
+
+  return useQuery({
+    queryKey: candidatesKeys.list(user?.id || '', search),
+    queryFn: async () => {
+      if (!user?.id) return []
+      return candidatesService.getCandidates(user.id, search)
     },
+    enabled: !!user?.id,
     staleTime: 30 * 1000, // Consider data fresh for 30 seconds
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // Don't refetch on window focus since we have real-time updates
     refetchOnReconnect: true,
+    retry: 3,
+    retryDelay: 1000,
   })
 }
 
@@ -55,70 +66,43 @@ export function useAddCandidate() {
   const { user } = useAuthContext()
   
   return useMutation({
-    mutationFn: async (candidateData: Omit<Candidate, 'id' | 'createdAt'>) => {
-      const docRef = await addDoc(collection(firestore, 'candidates'), {
-        ...candidateData,
-        createdAt: new Date(),
+    mutationFn: async (candidateData: {
+      name: string
+      email: string
+      position?: string
+      phone?: string
+      location?: string
+    }) => {
+      if (!user?.id) throw new Error('User not authenticated')
+      
+      const candidateId = await candidatesService.addCandidate({
+        name: candidateData.name,
+        email: candidateData.email,
+        position: candidateData.position || '',
+        phone: candidateData.phone,
+        location: candidateData.location,
+        createdBy: user.id,
+        status: 'pending'
       })
       
-      // Create notification for the current user (so they can see the notification system working)
-      if (user?.id) {
-        try {
-          await addDoc(collection(firestore, 'notifications'), {
-            message: `✨ You successfully added candidate ${candidateData.name}!`,
-            type: 'candidate',
-            read: false,
-            timestamp: new Date(),
-            userId: user.id, // Notify the current user
-            candidateId: docRef.id,
-            candidateName: candidateData.name,
-            fromUser: user.id,
-            fromUserName: user.name || 'You'
-          })
-        } catch (error) {
-          console.log('Failed to create notification:', error)
-        }
-      }
+      // Create notifications for ALL users (collaborative platform)
+      await createCandidateNotificationForAllUsers(candidateData.name, user.name, 'added')
       
-      return docRef.id
+      return candidateId
     },
-    onMutate: async (newCandidate) => {
-      // Cancel outgoing queries
-      await queryClient.cancelQueries({ queryKey: candidatesKeys.lists() })
-
-      // Snapshot previous value
-      const previousCandidates = queryClient.getQueryData(candidatesKeys.lists())
-
-      // Optimistically update
-      queryClient.setQueryData(candidatesKeys.lists(), (old: Candidate[] = []) => [
-        {
-          ...newCandidate,
-          id: 'temp-' + Date.now(),
-          createdAt: new Date(),
-        },
-        ...old,
-      ])
-
-      return { previousCandidates }
+    onSuccess: (data, variables) => {
+      // The real-time subscription will automatically update the cache
+      toast({
+        title: "Candidate added successfully",
+        description: `${variables.name} has been added to your candidate list.`,
+      })
     },
-    onError: (err, newCandidate, context) => {
-      // Rollback on error
-      queryClient.setQueryData(candidatesKeys.lists(), context?.previousCandidates)
+    onError: (error: any) => {
       toast({
         variant: "destructive",
-        title: "Failed to add candidate 😢",
-        description: "Something went wrong while adding the candidate.",
+        title: "Failed to add candidate",
+        description: error.message || "Something went wrong while adding the candidate.",
       })
-    },
-    onSuccess: () => {
-      toast({
-        title: "Candidate added! 🎉",
-        description: "The new candidate vibe has been added to your list.",
-      })
-    },
-    onSettled: () => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: candidatesKeys.lists() })
     },
   })
 }
@@ -126,41 +110,30 @@ export function useAddCandidate() {
 // Update candidate mutation
 export function useUpdateCandidate() {
   const queryClient = useQueryClient()
+  const { user } = useAuthContext()
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Candidate> }) => {
-      const candidateRef = doc(firestore, 'candidates', id)
-      await updateDoc(candidateRef, data)
-      return { id, data }
-    },
-    onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries({ queryKey: candidatesKeys.lists() })
-      const previousCandidates = queryClient.getQueryData(candidatesKeys.lists())
-
-      queryClient.setQueryData(candidatesKeys.lists(), (old: Candidate[] = []) =>
-        old.map(candidate => 
-          candidate.id === id ? { ...candidate, ...data } : candidate
-        )
-      )
-
-      return { previousCandidates }
-    },
-    onError: (err, variables, context) => {
-      queryClient.setQueryData(candidatesKeys.lists(), context?.previousCandidates)
-      toast({
-        variant: "destructive",
-        title: "Update failed 😔",
-        description: "Couldn't update the candidate info.",
-      })
+      await candidatesService.updateCandidate(id, data)
+      
+      // Create notification if status changed
+      if (data.status && user?.id) {
+        await createCandidateNotification(user.id, data.name || 'Candidate', `Status updated to ${data.status}`)
+      }
     },
     onSuccess: () => {
+      // The real-time subscription will automatically update the cache
       toast({
-        title: "Updated! ✨",
+        title: "Updated successfully",
         description: "Candidate info has been updated successfully.",
       })
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: candidatesKeys.lists() })
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Update failed",
+        description: error.message || "Couldn't update the candidate info.",
+      })
     },
   })
 }
@@ -168,72 +141,60 @@ export function useUpdateCandidate() {
 // Delete candidate mutation
 export function useDeleteCandidate() {
   const queryClient = useQueryClient()
+  const { user } = useAuthContext()
   
   return useMutation({
     mutationFn: async (id: string) => {
-      await deleteDoc(doc(firestore, 'candidates', id))
-      return id
-    },
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: candidatesKeys.lists() })
-      const previousCandidates = queryClient.getQueryData(candidatesKeys.lists())
-
-      queryClient.setQueryData(candidatesKeys.lists(), (old: Candidate[] = []) =>
-        old.filter(candidate => candidate.id !== id)
-      )
-
-      return { previousCandidates }
-    },
-    onError: (err, id, context) => {
-      queryClient.setQueryData(candidatesKeys.lists(), context?.previousCandidates)
-      toast({
-        variant: "destructive",
-        title: "Delete failed 💀",
-        description: "Couldn't remove the candidate.",
-      })
+      // Get candidate info before deleting for the notification
+      const candidate = await candidatesService.getCandidate(id)
+      await candidatesService.deleteCandidate(id)
+      
+      // Create notification
+      if (user?.id) {
+        await createCandidateNotification(user.id, candidate.name, 'Candidate removed')
+      }
     },
     onSuccess: () => {
+      // The real-time subscription will automatically update the cache
       toast({
-        title: "Candidate removed! 🗑️",
+        title: "Candidate removed",
         description: "The candidate has been deleted from your list.",
       })
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: candidatesKeys.lists() })
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Delete failed",
+        description: error.message || "Couldn't remove the candidate.",
+      })
     },
   })
 }
 
-// Prefetch candidates (for performance optimization)
+// Get single candidate
+export function useCandidate(id: string) {
+  return useQuery({
+    queryKey: candidatesKeys.detail(id),
+    queryFn: async () => {
+      return candidatesService.getCandidate(id)
+    },
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 3,
+  })
+}
+
+// Prefetch candidates (useful for performance optimization)
 export function usePrefetchCandidates() {
   const queryClient = useQueryClient()
+  const { user } = useAuthContext()
   
-  return () => {
+  return (search = '') => {
     queryClient.prefetchQuery({
-      queryKey: candidatesKeys.lists(),
-      queryFn: () => {
-        return new Promise<Candidate[]>((resolve, reject) => {
-          const q = query(
-            collection(firestore, 'candidates'),
-            orderBy('createdAt', 'desc')
-          )
-
-          const unsubscribe = onSnapshot(q, 
-            (snapshot) => {
-              const candidatesList = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.toDate() || new Date()
-              })) as Candidate[]
-              
-              unsubscribe()
-              resolve(candidatesList)
-            },
-            (error) => {
-              reject(error)
-            }
-          )
-        })
+      queryKey: candidatesKeys.list(user?.id || '', search),
+      queryFn: async () => {
+        if (!user?.id) return []
+        return candidatesService.getCandidates(user.id, search)
       },
       staleTime: 30 * 1000,
     })

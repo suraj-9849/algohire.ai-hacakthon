@@ -51,6 +51,14 @@ export const useAuth = () => {
       createdAt: new Date()
     })
 
+    // Set user state immediately
+    setUser({
+      id: firebaseUser.uid,
+      email: firebaseUser.email!,
+      name: name,
+      createdAt: new Date()
+    })
+
     return firebaseUser
   }
 

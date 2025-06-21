@@ -11,18 +11,15 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "dev:web": "turbo dev --filter=web",
-    "dev:backend": "turbo dev --filter=backend",
     "dev:shared": "turbo dev --filter=@repo/shared",
     "build:web": "turbo build --filter=web",
-    "build:backend": "turbo build --filter=backend", 
     "build:shared": "turbo build --filter=@repo/shared",
     "start": "turbo start",
     "start:web": "turbo start --filter=web",
-    "start:backend": "turbo start --filter=backend",
     "lint": "turbo lint",
     "clean": "turbo clean",
     "type-check": "turbo type-check",
-    "install:all": "pnpm install && pnpm --filter=backend install && pnpm --filter=web install && pnpm --filter=@repo/shared install"
+    "install:all": "pnpm install && pnpm --filter=web install && pnpm --filter=@repo/shared install"
   },
   "devDependencies": {
     "@turbo/gen": "^1.10.12",

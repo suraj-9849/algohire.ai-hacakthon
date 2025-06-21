@@ -45,14 +45,23 @@ export function AddCandidateDialog({ open, onOpenChange }: AddCandidateDialogPro
     if (!user) return
     
     try {
-      await addCandidate.mutateAsync({
+      // Only include fields that have actual values
+      const candidateData: any = {
         name: data.name,
         email: data.email,
         position: data.position,
-        phone: data.phone || undefined,
-        location: data.location || undefined,
-        createdBy: user.id,
-      })
+      }
+      
+      // Only add optional fields if they have values
+      if (data.phone && data.phone.trim()) {
+        candidateData.phone = data.phone.trim()
+      }
+      
+      if (data.location && data.location.trim()) {
+        candidateData.location = data.location.trim()
+      }
+      
+      await addCandidate.mutateAsync(candidateData)
 
       form.reset()
       onOpenChange(false)

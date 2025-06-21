@@ -1,118 +1,98 @@
 # Collaborative Candidate Notes
 
-A simple real-time platform for hiring teams to share candidate notes and collaborate during interviews.
+A modern collaborative platform for managing candidate notes and mentions, built for the AlgoHire hackathon.
 
-##  What it does
+## **Architecture**
 
-- **Real-time messaging** for each candidate
-- **@mention teammates** to get their attention  
-- **Live notifications** when someone mentions you
-- **Simple dashboard** to see all candidates and notifications
-
-## 🛠 Tech Stack
-
-- **Frontend:** Next.js + TypeScript + Tailwind CSS
-- **Backend:** Node.js + Express + TypeScript  
-- **Database:** Firebase (Firestore + Realtime Database)
+- **Frontend:** Next.js 14 + TypeScript + TailwindCSS
+- **Database:** Firebase Firestore (NoSQL)
 - **Authentication:** Firebase Auth
+- **Real-time:** Firebase real-time listeners
+- **UI Components:** Shadcn/ui
+- **State Management:** TanStack Query
+- **Styling:** TailwindCSS
 
-##  Quick Start
+## **Features**
 
-### 1. Install Dependencies
-```bash
-# Install pnpm if you don't have it
-npm install -g pnpm
+- **Real-time Collaboration:** Multiple users can add notes simultaneously
+- **@Mentions System:** Mention team members and notify them instantly
+- **Candidate Management:** Add, edit, and manage candidate profiles
+- **Live Notifications:** Real-time notifications for mentions and updates
+- **Search & Filter:** Find candidates quickly with advanced search
+- **Responsive Design:** Works perfectly on desktop and mobile
 
-# Install project dependencies
-pnpm install
-```
+## **Quick Start**
 
-### 2. Setup Environment
+### Prerequisites
+- Node.js 18+
+- pnpm (recommended) or npm
+- Firebase project setup
+
+### Environment Setup
 
 Create `apps/web/.env.local`:
 ```env
+# Firebase Configuration
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-NEXT_PUBLIC_FIREBASE_DATABASE_URL=https://your_project-default-rtdb.firebaseio.com/
-NEXT_PUBLIC_API_URL=http://localhost:5001/api
 ```
 
-Create `apps/backend/.env`:
-```env
-NODE_ENV=development
-PORT=5001
-FIREBASE_PROJECT_ID=your_project_id
-FIREBASE_DATABASE_URL=https://your_project-default-rtdb.firebaseio.com/
-FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
-```
+### Installation & Development
 
-### 3. Run the App
-
-**Option 1: Traditional way**
 ```bash
-# Start frontend (Terminal 1)
-cd apps/web
-pnpm dev
+# Install dependencies
+pnpm install
 
-# Start backend (Terminal 2)  
-cd apps/backend
+# Start development server
+pnpm dev:web
+
+# Or start all apps
 pnpm dev
 ```
 
-**Option 2: Using Docker**
+### Available Scripts
+
+```bash
+pnpm dev              # Start all development servers
+pnpm dev:web          # Frontend only
+pnpm build            # Build all applications
+pnpm build:web        # Build frontend
+pnpm lint             # Run linting
+pnpm type-check       # TypeScript type checking
+```
+
+##  **Firebase Setup**
+
+1. Create a Firebase project at https://console.firebase.google.com
+2. Enable Firestore Database
+3. Enable Authentication (Email/Password)
+4. Set up Firestore security rules
+5. Copy your Firebase config to `.env.local`
+
+## 📱 **Usage**
+
+1. **Sign Up/Login:** Create an account or sign in
+2. **Add Candidates:** Click "Add Candidate" to create profiles
+3. **Add Notes:** Click on any candidate to add collaborative notes
+4. **Mention Users:** Use @username to mention team members
+5. **Real-time Updates:** See changes and notifications instantly
+
+
+### Docker Deployment
 ```bash
 # Build and run with Docker
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop
-docker-compose down
+docker-compose up --build
 ```
 
-Visit http://localhost:3000 🎉
+## **Tech Stack Details**
 
-
-## 🔧 Available Commands
-
-```bash
-pnpm dev              # Start both apps
-pnpm dev:web          # Frontend only
-pnpm dev:backend      # Backend only
-
-# Building
-pnpm build            # Build both apps
-pnpm type-check       # Check TypeScript
-pnpm lint             # Run ESLint
-
-# Docker
-docker-compose up     # Run with Docker
-docker-compose down   # Stop Docker containers
-```
-
-##  How to Use
-
-1. **Sign up** with email/password
-2. **Add candidates** from the dashboard  
-3. **Click a candidate** to start chatting
-4. **Use @username** to mention teammates
-5. **Check notifications** for your mentions
-
-## Firebase Setup
-
-1. Create a Firebase project
-2. Enable **Authentication** (Email/Password)
-3. Enable **Firestore Database**  
-4. Enable **Realtime Database**
-5. Get your config and service account key
-6. Update the `.env` files
-
-
----
-
-**Built for Algohire Hackathon**
+- **Next.js 14:** App Router, Server Components, TypeScript
+- **Firebase:** Firestore, Auth, Real-time listeners
+- **TanStack Query:** Server state management and caching
+- **Shadcn/ui:** Modern, accessible UI components
+- **TailwindCSS:** Utility-first CSS framework
+- **Turbo:** Monorepo build system
