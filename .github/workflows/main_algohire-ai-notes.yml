@@ -41,47 +41,47 @@ jobs:
           mkdir -p deploy
           cd deploy
           
-          # Copy Next.js app files
-          cp -r ../apps/web/.next ./
-          cp -r ../apps/web/public ./
-          cp ../apps/web/next.config.js ./
-          
-          # Get all production dependencies from the web app
-          node -e "
-            const webPkg = require('../apps/web/package.json');
-            const sharedPkg = require('../packages/shared/package.json');
+          # Check if standalone build exists
+          if [ -d "../apps/web/.next/standalone" ]; then
+            echo "Using standalone build"
+            # Copy the standalone Next.js build (includes all dependencies)
+            cp -r ../apps/web/.next/standalone/* ./
             
-            // Merge dependencies, excluding workspace packages
-            const deps = {...webPkg.dependencies};
+            # Create .next directory and copy static files
+            mkdir -p .next
+            cp -r ../apps/web/.next/static ./.next/
             
-            // Add shared package dependencies
-            Object.assign(deps, sharedPkg.dependencies);
+            # Copy public assets
+            cp -r ../apps/web/public ./
             
-            // Remove workspace dependencies
-            Object.keys(deps).forEach(key => {
-              if (key.startsWith('@repo/') || deps[key].includes('workspace:')) {
-                delete deps[key];
+            # Create package.json for standalone mode
+            echo '{
+              "name": "web",
+              "version": "1.0.0",
+              "scripts": {
+                "start": "node server.js"
               }
-            });
+            }' > package.json
+          else
+            echo "Standalone build not found, using regular build with dependencies"
+            # Copy regular Next.js build
+            cp -r ../apps/web/.next ./
+            cp -r ../apps/web/public ./
+            cp ../apps/web/next.config.js ./
             
-            // Create production package.json
-            const prodPkg = {
-              name: 'web',
-              version: '1.0.0',
-              scripts: {
-                start: 'next start'
+            # Create package.json with Next.js dependency
+            echo '{
+              "name": "web",
+              "version": "1.0.0",
+              "scripts": {
+                "start": "next start"
               },
-              dependencies: deps
-            };
-            
-            require('fs').writeFileSync('package.json', JSON.stringify(prodPkg, null, 2));
-          "
-          
-          # Copy built shared package if it exists
-          if [ -d "../packages/shared/dist" ]; then
-            mkdir -p node_modules/@repo/shared
-            cp -r ../packages/shared/dist/* node_modules/@repo/shared/
-            cp ../packages/shared/package.json node_modules/@repo/shared/
+              "dependencies": {
+                "next": "^14.2.0",
+                "react": "^18.2.0",
+                "react-dom": "^18.2.0"
+              }
+            }' > package.json
           fi
 
       - name: Zip artifact for deployment
