@@ -41,27 +41,48 @@ jobs:
           mkdir -p deploy
           cd deploy
           
-          # Copy the standalone Next.js build (includes all dependencies)
-          cp -r ../apps/web/.next/standalone/* ./
-          
-          # Create .next directory and copy static files
-          mkdir -p .next
-          cp -r ../apps/web/.next/static ./.next/
-          
-          # Copy public assets
+          # Copy Next.js app files
+          cp -r ../apps/web/.next ./
           cp -r ../apps/web/public ./
-          
-          # Copy Next.js config
           cp ../apps/web/next.config.js ./
           
-          # Create simple package.json for Azure
-          echo '{
-            "name": "web",
-            "version": "1.0.0",
-            "scripts": {
-              "start": "node server.js"
-            }
-          }' > package.json
+          # Get all production dependencies from the web app
+          node -e "
+            const webPkg = require('../apps/web/package.json');
+            const sharedPkg = require('../packages/shared/package.json');
+            
+            // Merge dependencies, excluding workspace packages
+            const deps = {...webPkg.dependencies};
+            
+            // Add shared package dependencies
+            Object.assign(deps, sharedPkg.dependencies);
+            
+            // Remove workspace dependencies
+            Object.keys(deps).forEach(key => {
+              if (key.startsWith('@repo/') || deps[key].includes('workspace:')) {
+                delete deps[key];
+              }
+            });
+            
+            // Create production package.json
+            const prodPkg = {
+              name: 'web',
+              version: '1.0.0',
+              scripts: {
+                start: 'next start'
+              },
+              dependencies: deps
+            };
+            
+            require('fs').writeFileSync('package.json', JSON.stringify(prodPkg, null, 2));
+          "
+          
+          # Copy built shared package if it exists
+          if [ -d "../packages/shared/dist" ]; then
+            mkdir -p node_modules/@repo/shared
+            cp -r ../packages/shared/dist/* node_modules/@repo/shared/
+            cp ../packages/shared/package.json node_modules/@repo/shared/
+          fi
 
       - name: Zip artifact for deployment
         run: |

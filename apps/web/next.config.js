@@ -2,10 +2,11 @@
 const nextConfig = {
   experimental: {
   },
-  // Prevent static optimization for pages that use server-side features
-  output: 'standalone',
   // Skip trailing slash redirect during build
   trailingSlash: false,
+  // Configure for Azure Web App deployment
+  poweredByHeader: false,
+  compress: true,
 };
 
 module.exports = nextConfig;
