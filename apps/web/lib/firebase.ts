@@ -15,20 +15,36 @@ const firebaseConfig = {
   databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig)
-
-// Initialize Firebase services
-export const auth = getAuth(app)
-export const firestore = getFirestore(app)
-export const db = firestore // Alias for compatibility
-export const database = getDatabase(app)
-
-// Initialize Analytics (only in browser)
+// Only initialize Firebase if we have the required config
+let app: any = null
+let auth: any = null
+let firestore: any = null
+let database: any = null
 let analytics: any = null
-if (typeof window !== 'undefined') {
-  analytics = getAnalytics(app)
-}
-export { analytics }
 
+// Check if we have the minimum required config
+const hasFirebaseConfig = firebaseConfig.apiKey && firebaseConfig.projectId
+
+if (hasFirebaseConfig) {
+  try {
+    // Initialize Firebase
+    app = initializeApp(firebaseConfig)
+
+    // Initialize Firebase services
+    auth = getAuth(app)
+    firestore = getFirestore(app)
+    database = getDatabase(app)
+
+    // Initialize Analytics (only in browser)
+    if (typeof window !== 'undefined') {
+      analytics = getAnalytics(app)
+    }
+  } catch (error) {
+    console.warn('Firebase initialization failed:', error)
+  }
+}
+
+// Export with fallbacks
+export { auth, firestore, database, analytics }
+export const db = firestore // Alias for compatibility
 export default app 

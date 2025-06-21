@@ -24,12 +24,22 @@ const redisConfig: RedisConfig = {
 // Create Redis client instance
 class RedisClient {
   private static instance: RedisClient
-  private client: Redis
+  private client: Redis | null = null
   private isConnected: boolean = false
+  private isBuildTime: boolean = process.env.NODE_ENV === 'production' && !process.env.REDIS_HOST
 
   private constructor() {
-    this.client = new Redis(redisConfig)
-    this.setupEventHandlers()
+    // Don't initialize Redis during build time or if Redis config is missing
+    if (this.isBuildTime || typeof window !== 'undefined') {
+      return
+    }
+    
+    try {
+      this.client = new Redis(redisConfig)
+      this.setupEventHandlers()
+    } catch (error) {
+      console.warn('Redis initialization failed:', error)
+    }
   }
 
   public static getInstance(): RedisClient {
@@ -40,6 +50,8 @@ class RedisClient {
   }
 
   private setupEventHandlers(): void {
+    if (!this.client) return
+    
     this.client.on('connect', () => {
       console.log(' Redis connected successfully')
       this.isConnected = true
@@ -61,23 +73,30 @@ class RedisClient {
   }
 
   public getClient(): Redis {
+    if (!this.client) {
+      throw new Error('Redis client not initialized - running in build mode or missing configuration')
+    }
     return this.client
   }
 
   public isClientConnected(): boolean {
-    return this.isConnected
+    return this.isConnected && this.client !== null
   }
 
   public async disconnect(): Promise<void> {
-    await this.client.disconnect()
+    if (this.client) {
+      await this.client.disconnect()
+    }
   }
 
-  // Cache utility methods
+  // Cache utility methods with null checks
   public async set(
     key: string, 
     value: string | object, 
     ttlSeconds?: number
   ): Promise<void> {
+    if (!this.client) return
+    
     try {
       const serializedValue = typeof value === 'string' ? value : JSON.stringify(value)
       if (ttlSeconds) {
@@ -92,6 +111,8 @@ class RedisClient {
   }
 
   public async get<T = any>(key: string): Promise<T | null> {
+    if (!this.client) return null
+    
     try {
       const value = await this.client.get(key)
       if (!value) return null
@@ -108,6 +129,8 @@ class RedisClient {
   }
 
   public async del(key: string): Promise<number> {
+    if (!this.client) return 0
+    
     try {
       return await this.client.del(key)
     } catch (error) {
@@ -117,6 +140,8 @@ class RedisClient {
   }
 
   public async exists(key: string): Promise<boolean> {
+    if (!this.client) return false
+    
     try {
       const result = await this.client.exists(key)
       return result === 1
@@ -127,6 +152,8 @@ class RedisClient {
   }
 
   public async expire(key: string, seconds: number): Promise<boolean> {
+    if (!this.client) return false
+    
     try {
       const result = await this.client.expire(key, seconds)
       return result === 1
@@ -137,6 +164,8 @@ class RedisClient {
   }
 
   public async ttl(key: string): Promise<number> {
+    if (!this.client) return -1
+    
     try {
       return await this.client.ttl(key)
     } catch (error) {
@@ -147,6 +176,8 @@ class RedisClient {
 
   // List operations for queues/notifications
   public async lpush(key: string, ...values: string[]): Promise<number> {
+    if (!this.client) return 0
+    
     try {
       return await this.client.lpush(key, ...values)
     } catch (error) {
@@ -156,6 +187,8 @@ class RedisClient {
   }
 
   public async rpop(key: string): Promise<string | null> {
+    if (!this.client) return null
+    
     try {
       return await this.client.rpop(key)
     } catch (error) {
@@ -165,6 +198,8 @@ class RedisClient {
   }
 
   public async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    if (!this.client) return []
+    
     try {
       return await this.client.lrange(key, start, stop)
     } catch (error) {
@@ -175,6 +210,8 @@ class RedisClient {
 
   // Hash operations for structured data
   public async hset(key: string, field: string, value: string | object): Promise<number> {
+    if (!this.client) return 0
+    
     try {
       const serializedValue = typeof value === 'string' ? value : JSON.stringify(value)
       return await this.client.hset(key, field, serializedValue)
@@ -185,6 +222,8 @@ class RedisClient {
   }
 
   public async hget<T = any>(key: string, field: string): Promise<T | null> {
+    if (!this.client) return null
+    
     try {
       const value = await this.client.hget(key, field)
       if (!value) return null
@@ -201,6 +240,8 @@ class RedisClient {
   }
 
   public async hgetall<T = Record<string, any>>(key: string): Promise<T | null> {
+    if (!this.client) return null
+    
     try {
       const hash = await this.client.hgetall(key)
       if (!Object.keys(hash).length) return null
@@ -221,6 +262,8 @@ class RedisClient {
   }
 
   public async hdel(key: string, ...fields: string[]): Promise<number> {
+    if (!this.client) return 0
+    
     try {
       return await this.client.hdel(key, ...fields)
     } catch (error) {
@@ -231,6 +274,8 @@ class RedisClient {
 
   // Set operations for unique collections
   public async sadd(key: string, ...members: string[]): Promise<number> {
+    if (!this.client) return 0
+    
     try {
       return await this.client.sadd(key, ...members)
     } catch (error) {
@@ -240,6 +285,8 @@ class RedisClient {
   }
 
   public async smembers(key: string): Promise<string[]> {
+    if (!this.client) return []
+    
     try {
       return await this.client.smembers(key)
     } catch (error) {
@@ -249,6 +296,8 @@ class RedisClient {
   }
 
   public async srem(key: string, ...members: string[]): Promise<number> {
+    if (!this.client) return 0
+    
     try {
       return await this.client.srem(key, ...members)
     } catch (error) {
@@ -258,6 +307,8 @@ class RedisClient {
   }
 
   public async publish(channel: string, message: string | object): Promise<number> {
+    if (!this.client) return 0
+    
     try {
       const serializedMessage = typeof message === 'string' ? message : JSON.stringify(message)
       return await this.client.publish(channel, serializedMessage)
@@ -283,7 +334,20 @@ class RedisClient {
   }
 }
 
-export const redis = RedisClient.getInstance()
+// Export factory function instead of instance
+export const getRedisClient = (): RedisClient => {
+  return RedisClient.getInstance()
+}
+
+// Create a proxy object that only initializes Redis when actually used
+export const redis = new Proxy({} as RedisClient, {
+  get(target, prop) {
+    const instance = RedisClient.getInstance()
+    const value = (instance as any)[prop]
+    return typeof value === 'function' ? value.bind(instance) : value
+  }
+})
+
 export default redis
 
 export const CacheKeys = {

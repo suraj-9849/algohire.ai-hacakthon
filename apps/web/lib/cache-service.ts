@@ -142,6 +142,8 @@ export class CacheService {
   // Recent activity tracking
   static async addRecentActivity(userId: string, activity: any): Promise<void> {
     try {
+      if (!redis.isClientConnected()) return
+      
       const activityKey = CacheKeys.recentActivity(userId)
       const activityData = JSON.stringify({
         ...activity,
@@ -178,6 +180,8 @@ export class CacheService {
   // Rate limiting
   static async checkRateLimit(key: string, limit: number, windowSeconds: number): Promise<boolean> {
     try {
+      if (!redis.isClientConnected()) return true // Allow on no connection
+      
       const current = await redis.get<number>(`rate_limit:${key}`) || 0
       
       if (current >= limit) {
@@ -195,6 +199,8 @@ export class CacheService {
   // Batch operations
   static async batchSetCandidates(candidates: Candidate[]): Promise<void> {
     try {
+      if (!redis.isClientConnected()) return
+      
       const pipeline = redis.getClient().pipeline()
       
       candidates.forEach(candidate => {
@@ -209,6 +215,10 @@ export class CacheService {
 
   static async batchGetCandidates(candidateIds: string[]): Promise<(Candidate | null)[]> {
     try {
+      if (!redis.isClientConnected()) {
+        return candidateIds.map(() => null)
+      }
+      
       const pipeline = redis.getClient().pipeline()
       
       candidateIds.forEach(id => {
@@ -234,6 +244,11 @@ export class CacheService {
   // Health check
   static async healthCheck(): Promise<boolean> {
     try {
+      // Check if Redis client is connected
+      if (!redis.isClientConnected()) {
+        return false
+      }
+      
       const testKey = 'health_check'
       const testValue = Date.now().toString()
       
