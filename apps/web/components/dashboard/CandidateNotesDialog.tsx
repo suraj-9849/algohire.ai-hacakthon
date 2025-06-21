@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { Send, AtSign, Brain, Sparkles, X } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { Send, AtSign, Sparkles, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -293,7 +293,7 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
                   className="bg-black hover:bg-gray-800 text-white border border-gray-300"
                   size="sm"
                 >
-                  <Brain className="w-4 h-4 mr-2" />
+                  <Sparkles className="w-4 h-4 mr-2" />
                   Generate AI Summary
                 </Button>
               ) : (
