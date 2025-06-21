@@ -23,8 +23,12 @@ export interface Message {
   timestamp: Date
   mentions: string[]
 }
-
-const messagesCollection = collection(firestore, 'messages')
+const getMessagesCollection = () => {
+  if (!firestore) {
+    throw new Error('Firestore not initialized')
+  }
+  return collection(firestore, 'messages')
+}
 
 export const messagingService = {
   // Send a message/note about a candidate
@@ -35,12 +39,16 @@ export const messagingService = {
     senderName: string
     candidateName: string
   }) {
+    if (!firestore) {
+      throw new Error('Firebase not initialized')
+    }
+    
     // Parse mentions from content (@username format)
     const mentions = this.parseMentions(messageData.content)
     
     // Create the message with current timestamp to avoid serverTimestamp issues
     const currentTime = new Date()
-    const docRef = await addDoc(messagesCollection, {
+    const docRef = await addDoc(getMessagesCollection(), {
       candidateId: messageData.candidateId,
       content: messageData.content,
       senderId: messageData.senderId,
@@ -65,7 +73,6 @@ export const messagingService = {
     return docRef.id
   },
 
-  // Parse @mentions from message content - improved to handle any username format
   parseMentions(content: string): string[] {
     // Find all @mentions - matches @word or @"multiple words" or @word_name
     const mentionRegex = /@([a-zA-Z0-9_\s]+)(?=\s|$|[.,!?])/gi
@@ -84,7 +91,6 @@ export const messagingService = {
     return usernames
   },
 
-  // Create mention notifications for all mentioned users - improved matching
   async createMentionNotifications(
     mentions: string[],
     candidateId: string,
@@ -94,12 +100,9 @@ export const messagingService = {
     messageContent: string
   ) {
     try {
-      // Get all users first for better matching
       const allUsers = await findUsersByQuery()
       
-      // Find all users that match the mentioned names
       for (const mentionedName of mentions) {
-        // Find users by flexible matching (name or email, case insensitive, partial match)
         const matchingUsers = allUsers.filter(user => {
           const nameMatch = user.name.toLowerCase().includes(mentionedName.toLowerCase())
           const emailMatch = user.email.toLowerCase().includes(mentionedName.toLowerCase())
@@ -130,8 +133,12 @@ export const messagingService = {
 
   // Get messages for a candidate
   async getMessagesForCandidate(candidateId: string) {
+    if (!firestore) {
+      return []
+    }
+    
     const q = query(
-      messagesCollection,
+      getMessagesCollection(),
       where('candidateId', '==', candidateId),
       limit(100)
     )
@@ -145,17 +152,22 @@ export const messagingService = {
         timestamp: data.timestamp?.toDate() || new Date()
       }
     }) as Message[]
-
+    
     // Sort manually by timestamp
     messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-
+    
     return messages
   },
 
   // Real-time subscription to messages for a candidate
   subscribeToMessages(candidateId: string, callback: (messages: Message[]) => void) {
+    if (!firestore) {
+      callback([])
+      return () => {} // Return empty unsubscribe function
+    }
+    
     const q = query(
-      messagesCollection,
+      getMessagesCollection(),
       where('candidateId', '==', candidateId),
       limit(100)
     )

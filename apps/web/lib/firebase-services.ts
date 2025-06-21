@@ -27,18 +27,39 @@ const cleanFirestoreData = (data: Record<string, any>): Record<string, any> => {
   )
 }
 
-// Collection references
-const candidatesCollection = collection(firestore, 'candidates')
-const notificationsCollection = collection(firestore, 'notifications')
-const usersCollection = collection(firestore, 'users')
+// Collection reference getters (lazy initialization)
+const getCandidatesCollection = () => {
+  if (!firestore) {
+    throw new Error('Firestore not initialized')
+  }
+  return collection(firestore, 'candidates')
+}
+
+const getNotificationsCollection = () => {
+  if (!firestore) {
+    throw new Error('Firestore not initialized')
+  }
+  return collection(firestore, 'notifications')
+}
+
+const getUsersCollection = () => {
+  if (!firestore) {
+    throw new Error('Firestore not initialized')
+  }
+  return collection(firestore, 'users')
+}
 
 // Candidate Services
 export const candidatesService = {
   // Add a new candidate
   async addCandidate(candidateData: Omit<Candidate, 'id' | 'createdAt'>) {
+    if (!firestore) {
+      throw new Error('Firebase not initialized')
+    }
+    
     const cleanData = cleanFirestoreData(candidateData)
     
-    const docRef = await addDoc(candidatesCollection, {
+    const docRef = await addDoc(getCandidatesCollection(), {
       ...cleanData,
       createdAt: serverTimestamp(),
       status: candidateData.status || 'pending'
@@ -51,8 +72,12 @@ export const candidatesService = {
 
   // Get ALL candidates (collaborative platform - all users see all candidates)
   async getCandidates(userId: string, searchQuery: string = '') {
+    if (!firestore) {
+      return []
+    }
+    
     // Fetch from Firestore directly (caching handled by React Query)
-    const snapshot = await getDocs(candidatesCollection)
+    const snapshot = await getDocs(getCandidatesCollection())
     
     const candidates = snapshot.docs.map(doc => {
       const data = doc.data()
@@ -82,7 +107,12 @@ export const candidatesService = {
 
   // Real-time subscription to ALL candidates (collaborative platform)
   subscribeToAllCandidates(callback: (candidates: Candidate[]) => void) {
-    return onSnapshot(candidatesCollection, (snapshot) => {
+    if (!firestore) {
+      callback([])
+      return () => {} // Return empty unsubscribe function
+    }
+    
+    return onSnapshot(getCandidatesCollection(), (snapshot) => {
       const candidates = snapshot.docs.map(doc => {
         const data = doc.data()
         return {
@@ -104,19 +134,19 @@ export const candidatesService = {
   // Update a candidate
   async updateCandidate(candidateId: string, updateData: Partial<Candidate>) {
     const cleanData = cleanFirestoreData(updateData)
-    const docRef = doc(candidatesCollection, candidateId)
+    const docRef = doc(getCandidatesCollection(), candidateId)
     await updateDoc(docRef, cleanData)
   },
 
   // Delete a candidate
   async deleteCandidate(candidateId: string) {
-    const docRef = doc(candidatesCollection, candidateId)
+    const docRef = doc(getCandidatesCollection(), candidateId)
     await deleteDoc(docRef)
   },
 
   // Get a single candidate
   async getCandidate(candidateId: string) {
-    const docRef = doc(candidatesCollection, candidateId)
+    const docRef = doc(getCandidatesCollection(), candidateId)
     const snapshot = await getDoc(docRef)
     
     if (snapshot.exists()) {
@@ -135,9 +165,13 @@ export const candidatesService = {
 export const notificationsService = {
   // Create a notification
   async createNotification(notificationData: Partial<Notification>) {
+    if (!firestore) {
+      throw new Error('Firebase not initialized')
+    }
+    
     const cleanData = cleanFirestoreData(notificationData)
     
-    const docRef = await addDoc(notificationsCollection, {
+    const docRef = await addDoc(getNotificationsCollection(), {
       ...cleanData,
       timestamp: serverTimestamp(),
       read: false
@@ -158,16 +192,19 @@ export const notificationsService = {
 
   // Get notifications for a user
   async getUserNotifications(userId: string, unreadOnly: boolean = false) {
+    if (!firestore) {
+      return []
+    }
 
     let q = query(
-      notificationsCollection,
+      getNotificationsCollection(),
       where('userId', '==', userId),
       limit(50)
     )
 
     if (unreadOnly) {
       q = query(
-        notificationsCollection,
+        getNotificationsCollection(),
         where('userId', '==', userId),
         where('read', '==', false),
         limit(50)
@@ -189,8 +226,13 @@ export const notificationsService = {
 
   // Real-time subscription to user notifications
   subscribeToUserNotifications(userId: string, callback: (notifications: Notification[]) => void) {
+    if (!firestore) {
+      callback([])
+      return () => {} // Return empty unsubscribe function
+    }
+    
     const q = query(
-      notificationsCollection,
+      getNotificationsCollection(),
       where('userId', '==', userId),
       limit(50)
     )
@@ -213,14 +255,14 @@ export const notificationsService = {
 
   // Mark notification as read
   async markNotificationAsRead(notificationId: string) {
-    const docRef = doc(notificationsCollection, notificationId)
+    const docRef = doc(getNotificationsCollection(), notificationId)
     await updateDoc(docRef, { read: true })
   },
 
   // Mark all notifications as read for a user
   async markAllNotificationsAsRead(userId: string) {
     const q = query(
-      notificationsCollection,
+      getNotificationsCollection(),
       where('userId', '==', userId),
       where('read', '==', false)
     )
@@ -237,7 +279,7 @@ export const notificationsService = {
   // Get unread notification count
   async getUnreadCount(userId: string) {
     const q = query(
-      notificationsCollection,
+      getNotificationsCollection(),
       where('userId', '==', userId),
       where('read', '==', false)
     )
@@ -322,7 +364,7 @@ export const createCandidateNotificationForAllUsers = async (
 export const usersService = {
   // Get all users
   async getAllUsers(): Promise<User[]> {
-    const snapshot = await getDocs(usersCollection)
+    const snapshot = await getDocs(getUsersCollection())
     const users = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
@@ -334,7 +376,7 @@ export const usersService = {
 
   // Create or update user
   async createUser(userId: string, userData: { name: string; email: string }) {
-    await setDoc(doc(usersCollection, userId), {
+    await setDoc(doc(getUsersCollection(), userId), {
       ...userData,
       createdAt: new Date()
     })
