@@ -4,7 +4,6 @@ import { candidatesService, createCandidateNotification, createCandidateNotifica
 import { Candidate } from '@/lib/types'
 import { toast } from '@/hooks/useToast'
 import { useAuthContext } from '@/components/providers/AuthProvider'
-import CacheService from '@/lib/cache-service'
 
 // Query Keys
 export const candidatesKeys = {
@@ -50,16 +49,7 @@ export function useCandidates(search: string = '') {
     queryFn: async () => {
       if (!user?.id) return []
       
-      // Try Redis cache first for better performance
-      if (search) {
-        const cachedResults = await CacheService.getCachedSearchResults(search, user.id)
-        if (cachedResults) return cachedResults
-      } else {
-        const cachedCandidates = await CacheService.getCachedCandidateList(user.id)
-        if (cachedCandidates) return cachedCandidates
-      }
-      
-      // Fallback to Firebase if cache miss
+      // Get candidates directly from Firebase (Redis caching handled server-side)
       return candidatesService.getCandidates(user.id, search)
     },
     enabled: !!user?.id,
@@ -109,14 +99,7 @@ export function useAddCandidate() {
         description: `${variables.name} has been added to your candidate list.`,
       })
       
-      // Track user activity in Redis
-      if (user?.id) {
-        await CacheService.addRecentActivity(user.id, {
-          type: 'candidate_added',
-          candidateName: variables.name,
-          action: 'Added new candidate'
-        })
-      }
+      // Activity tracking will be handled server-side
     },
     onError: (error: any) => {
       toast({

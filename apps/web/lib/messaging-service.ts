@@ -21,7 +21,7 @@ export interface Message {
   senderId: string
   senderName: string
   timestamp: Date
-  mentions: string[] // Array of mentioned user IDs
+  mentions: string[]
 }
 
 const messagesCollection = collection(firestore, 'messages')

@@ -20,7 +20,11 @@ export default function RootLayout({
 }): React.ReactElement {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <style>
+
+        @import url('https://fonts.googleapis.com/css2?family=Huninn&display=swap');
+      </style>
+      <body className={`huninn-regular`}>
         <QueryProvider>
           <AuthProvider>
             <ToastProvider>
