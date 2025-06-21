@@ -6,6 +6,7 @@ import { notificationsService } from '@/lib/firebase-services'
 import { Notification } from '@/lib/types'
 import { useAuthContext } from '@/components/providers/AuthProvider'
 import { useToast } from '@/hooks/useToast'
+import CacheService from '@/lib/cache-service'
 
 const notificationQueryKeys = {
   all: ['notifications'] as const,
@@ -94,11 +95,19 @@ export const useNotifications = (unreadOnly = false) => {
     return unsubscribe
   }, [user?.id, queryClient])
 
-  // Fetch notifications using Firebase
+  // Fetch notifications using Redis cache + Firebase fallback
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: notificationQueryKeys.list(user?.id || ''),
     queryFn: async () => {
       if (!user?.id) return []
+      
+      // Try Redis cache first (only for full notifications, not unread-only)
+      if (!unreadOnly) {
+        const cachedNotifications = await CacheService.getCachedNotifications(user.id)
+        if (cachedNotifications) return cachedNotifications
+      }
+      
+      // Fallback to Firebase if cache miss
       return notificationsService.getUserNotifications(user.id, unreadOnly)
     },
     enabled: !!user?.id,

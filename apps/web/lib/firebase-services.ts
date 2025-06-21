@@ -17,6 +17,8 @@ import {
 } from 'firebase/firestore'
 import { firestore } from './firebase'
 import { Candidate, Notification, User } from './types'
+import CacheService from './cache-service'
+import { realtimeService } from './realtime-service'
 
 // Utility function to clean data for Firestore
 const cleanFirestoreData = (data: Record<string, any>): Record<string, any> => {
@@ -44,11 +46,38 @@ export const candidatesService = {
       status: candidateData.status || 'pending'
     })
     
+    // Invalidate cache after adding new candidate
+    await CacheService.invalidateCandidateCache(docRef.id, candidateData.createdBy)
+    
+    // Publish real-time update
+    const newCandidate: Candidate = {
+      id: docRef.id,
+      ...candidateData,
+      createdAt: new Date(),
+      status: candidateData.status || 'pending'
+    }
+    await realtimeService.publishCandidateUpdate(newCandidate)
+    
     return docRef.id
   },
 
   // Get ALL candidates (collaborative platform - all users see all candidates)
   async getCandidates(userId: string, searchQuery: string = '') {
+    // Check cache for search results first
+    if (searchQuery) {
+      const cachedResults = await CacheService.getCachedSearchResults(searchQuery, userId)
+      if (cachedResults) {
+        return cachedResults
+      }
+    } else {
+      // Check cache for full candidate list
+      const cachedCandidates = await CacheService.getCachedCandidateList(userId)
+      if (cachedCandidates) {
+        return cachedCandidates
+      }
+    }
+
+    // Fetch from Firestore if not in cache
     const snapshot = await getDocs(candidatesCollection)
     
     const candidates = snapshot.docs.map(doc => {
@@ -65,13 +94,19 @@ export const candidatesService = {
 
     // Filter by search query if provided
     if (searchQuery) {
-      return candidates.filter(candidate => 
+      const filteredCandidates = candidates.filter(candidate => 
         candidate.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         candidate.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (candidate.position && candidate.position.toLowerCase().includes(searchQuery.toLowerCase()))
       )
+      
+      // Cache search results
+      await CacheService.setCachedSearchResults(searchQuery, userId, filteredCandidates)
+      return filteredCandidates
     }
 
+    // Cache full candidate list
+    await CacheService.setCachedCandidateList(userId, candidates)
     return candidates
   },
 
@@ -138,11 +173,34 @@ export const notificationsService = {
       read: false
     })
     
+    // Invalidate notification cache and publish real-time update
+    if (notificationData.userId) {
+      await CacheService.invalidateNotificationCache(notificationData.userId)
+      
+      // Publish real-time notification
+      const notification: Notification = {
+        id: docRef.id,
+        timestamp: new Date(),
+        read: false,
+        ...notificationData
+      } as Notification
+      
+      await realtimeService.publishNotification(notificationData.userId, notification)
+    }
+    
     return docRef.id
   },
 
   // Get notifications for a user
   async getUserNotifications(userId: string, unreadOnly: boolean = false) {
+    // Check cache first (only for full notifications, not unread-only)
+    if (!unreadOnly) {
+      const cachedNotifications = await CacheService.getCachedNotifications(userId)
+      if (cachedNotifications) {
+        return cachedNotifications
+      }
+    }
+
     let q = query(
       notificationsCollection,
       where('userId', '==', userId),
@@ -167,6 +225,11 @@ export const notificationsService = {
 
     // Sort manually by timestamp descending
     notifications.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+    
+    // Cache full notifications list
+    if (!unreadOnly) {
+      await CacheService.setCachedNotifications(userId, notifications)
+    }
     
     return notifications
   },

@@ -292,7 +292,7 @@ export default function LandingPage() {
               <span className="text-lg font-semibold text-black">AlgoHire</span>
             </div>
             <p className="text-gray-600 text-sm">
-              © 2024 AlgoHire. Built for the hiring hackathon.
+              © 2025 AlgoHire. Built for the hiring hackathon.
             </p>
           </div>
         </div>
