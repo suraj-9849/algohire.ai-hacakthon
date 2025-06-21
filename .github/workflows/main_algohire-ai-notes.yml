@@ -44,8 +44,11 @@ jobs:
           # Copy the standalone Next.js build (includes all dependencies)
           cp -r ../apps/web/.next/standalone/* ./
           
-          # Copy static files and public assets
-          cp -r ../apps/web/.next/static ./.next/static
+          # Create .next directory and copy static files
+          mkdir -p .next
+          cp -r ../apps/web/.next/static ./.next/
+          
+          # Copy public assets
           cp -r ../apps/web/public ./
           
           # Copy Next.js config
