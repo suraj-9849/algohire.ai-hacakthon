@@ -3,10 +3,13 @@ FROM node:18-alpine AS base
 # Install pnpm
 RUN npm install -g pnpm
 
+# Set working directory
 WORKDIR /app
 
-# Copy workspace files (when context is root directory)
+# Copy package files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Copy all packages and apps
 COPY packages ./packages
 COPY apps ./apps
 
@@ -27,7 +30,7 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm
 
-# Copy built files
+# Copy built application
 COPY --from=base /app/apps/web/.next ./apps/web/.next
 COPY --from=base /app/apps/web/public ./apps/web/public
 COPY --from=base /app/apps/web/package.json ./apps/web/package.json
@@ -47,9 +50,12 @@ RUN pnpm install --prod --frozen-lockfile
 # Set working directory to web app
 WORKDIR /app/apps/web
 
+# Expose port
 EXPOSE 3000
 
+# Set environment to production
 ENV NODE_ENV=production
 ENV PORT=3000
 
+# Start the application
 CMD ["pnpm", "start"] 

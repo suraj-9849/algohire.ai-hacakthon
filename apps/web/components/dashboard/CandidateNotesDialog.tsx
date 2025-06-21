@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Send, AtSign } from 'lucide-react'
+import { Send, AtSign, Brain, Sparkles, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,6 +13,8 @@ import { toast } from '@/hooks/useToast'
 import { messagingService, Message } from '@/lib/messaging-service'
 import { findUsersByQuery } from '@/lib/firebase-services'
 import { Badge } from '@/components/ui/badge'
+import { geminiService, CandidateSummary } from '@/lib/gemini-service'
+import { AISummaryPanel } from './AISummaryPanel'
 
 interface CandidateNotesDialogProps {
   candidate: Candidate
@@ -27,6 +30,9 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
   const [users, setUsers] = useState<User[]>([])
   const [showMentions, setShowMentions] = useState(false)
   const [mentionFilter, setMentionFilter] = useState('')
+  const [showAISummary, setShowAISummary] = useState(false)
+  const [aiSummary, setAiSummary] = useState<CandidateSummary | null>(null)
+  const [loadingAISummary, setLoadingAISummary] = useState(false)
   const { user } = useAuthContext()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -112,6 +118,46 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
     inputRef.current?.focus()
   }
 
+  const generateAISummary = async () => {
+    if (messages.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No notes to analyze",
+        description: "Add some notes about the candidate first.",
+      })
+      return
+    }
+
+    setLoadingAISummary(true)
+    setShowAISummary(true)
+
+    try {
+      const noteContents = messages.map(msg => `${msg.senderName}: ${msg.content}`)
+      const summary = await geminiService.generateCandidateSummary(
+        candidate.name,
+        candidate.position || 'Software Engineer', // Default position if not specified
+        noteContents
+      )
+
+      setAiSummary(summary)
+
+      toast({
+        title: "AI Summary Generated!",
+        description: "The AI has analyzed all candidate notes.",
+      })
+    } catch (error) {
+      console.error('Error generating AI summary:', error)
+      toast({
+        variant: "destructive",
+        title: "Failed to generate AI summary",
+        description: "Something went wrong. Please try again.",
+      })
+      setShowAISummary(false)
+    } finally {
+      setLoadingAISummary(false)
+    }
+  }
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !user || sending) return
 
@@ -126,7 +172,7 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
       })
 
       setNewMessage('')
-      
+
       toast({
         title: "Message sent",
         description: "Your note has been added to the candidate.",
@@ -162,7 +208,7 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
 
   const renderMessage = (message: Message) => {
     const isCurrentUser = message.senderId === user?.id
-    
+
     // Split text by mentions and render with proper components
     const renderMessageContent = (text: string) => {
       const mentionRegex = /@([a-zA-Z0-9_\s]+)(?=\s|$|[.,!?])/g
@@ -175,26 +221,26 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
         if (match.index > lastIndex) {
           parts.push(text.slice(lastIndex, match.index))
         }
-        
+
         // Add mention as Badge component
         parts.push(
-          <Badge 
-            key={`mention-${match.index}`} 
-            variant="secondary" 
-            className="bg-blue-100 text-blue-600 hover:bg-blue-200 px-1 py-0 text-xs font-semibold"
+          <Badge
+            key={`mention-${match.index}`}
+            variant="secondary"
+            className="bg-gray-100 text-gray-800 hover:bg-gray-200 px-1 py-0 text-xs font-semibold"
           >
             @{match[1]}
           </Badge>
         )
-        
+
         lastIndex = match.index + match[0].length
       }
-      
+
       // Add remaining text
       if (lastIndex < text.length) {
         parts.push(text.slice(lastIndex))
       }
-      
+
       return parts.length > 0 ? parts : [text]
     }
 
@@ -205,20 +251,18 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
       >
         <div className={`max-w-[70%] ${isCurrentUser ? 'order-2' : 'order-1'}`}>
           <div
-            className={`p-3 rounded-lg ${
-              isCurrentUser
-                ? 'bg-blue-500 text-white'
+            className={`p-3 rounded-lg ${isCurrentUser
+                ? 'bg-black text-white'
                 : 'bg-gray-100 text-gray-800'
-            }`}
+              }`}
           >
             <div className="text-sm">
               {renderMessageContent(message.content)}
             </div>
           </div>
           <div
-            className={`text-xs text-gray-500 mt-1 ${
-              isCurrentUser ? 'text-right' : 'text-left'
-            }`}
+            className={`text-xs text-gray-500 mt-1 ${isCurrentUser ? 'text-right' : 'text-left'
+              }`}
           >
             {isCurrentUser ? 'You' : message.senderName} • {message.timestamp.toLocaleTimeString()}
           </div>
@@ -227,83 +271,144 @@ export function CandidateNotesDialog({ candidate, open, onOpenChange }: Candidat
     )
   }
 
-  const filteredUsers = users.filter(u => 
+  const filteredUsers = users.filter(u =>
     u.name?.toLowerCase().includes(mentionFilter.toLowerCase()) && u.id !== user?.id
   )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl h-[600px] flex flex-col">
+      <DialogContent className={`${showAISummary ? 'max-w-7xl' : 'max-w-2xl'} h-[600px] flex flex-col transition-all duration-300`}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            Notes for {candidate.name}
-            <span className="text-sm text-gray-500">({candidate.email})</span>
-          </DialogTitle>
+          <div className="flex items-center justify-between gap-4">
+            <DialogTitle className="flex items-center gap-2 flex-1 min-w-0">
+              Notes for {candidate.name}
+              <span className="text-sm text-gray-500">({candidate.email})</span>
+            </DialogTitle>
+
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {!showAISummary ? (
+                <Button
+                  onClick={generateAISummary}
+                  disabled={messages.length === 0 || loadingAISummary}
+                  className="bg-black hover:bg-gray-800 text-white border border-gray-300"
+                  size="sm"
+                >
+                  <Brain className="w-4 h-4 mr-2" />
+                  Generate AI Summary
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => setShowAISummary(false)}
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Close Summary
+                </Button>
+              )}
+            </div>
+          </div>
         </DialogHeader>
 
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 bg-gray-50 rounded-lg">
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <LoadingSpinner />
-              <span className="ml-2">Loading messages for {candidate.name}...</span>
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
-              <p>No messages yet for {candidate.name}.</p>
-              <p className="text-sm">Start the conversation by sending the first note!</p>
-            </div>
-          ) : (
-            <div>
-              <div className="text-xs text-gray-400 mb-2">
-                {messages.length} message{messages.length !== 1 ? 's' : ''} for {candidate.name}
-              </div>
-              {messages.map(renderMessage)}
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Mention Suggestions */}
-        {showMentions && filteredUsers.length > 0 && (
-          <div className="bg-white border rounded-lg shadow-lg p-2 mb-2 max-h-40 overflow-y-auto">
-            <div className="text-xs text-gray-500 mb-2 px-2">Mention someone:</div>
-            {filteredUsers.map((user) => (
-              <button
-                key={user.id}
-                className="w-full text-left p-2 hover:bg-gray-100 rounded flex items-center gap-2"
-                onClick={() => insertMention(user)}
-              >
-                <AtSign size={12} className="text-blue-500" />
-                <span className="font-medium">{user.name}</span>
-                <span className="text-xs text-gray-500">({user.email})</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Message Input */}
-        <div className="flex gap-2">
-          <Input
-            ref={inputRef}
-            value={newMessage}
-            onChange={handleInputChange}
-            onKeyPress={handleKeyPress}
-            placeholder="Type your note... Use @ to mention someone"
-            disabled={sending}
-            className="flex-1"
-          />
-          <Button 
-            onClick={sendMessage} 
-            disabled={!newMessage.trim() || sending}
-            size="icon"
+        <div className="flex flex-1 gap-4 overflow-hidden">
+          <motion.div
+            animate={{
+              width: showAISummary ? '50%' : '100%',
+            }}
+            transition={{ duration: 0.5, ease: 'easeInOut' }}
+            className="flex flex-col h-full"
           >
-            {sending ? <LoadingSpinner size="sm" /> : <Send size={16} />}
-          </Button>
-        </div>
+            <div className="flex-1 overflow-y-auto p-4 bg-gray-50 rounded-lg">
+              {loading ? (
+                <div className="flex items-center justify-center h-full">
+                  <LoadingSpinner />
+                  <span className="ml-2">Loading messages for {candidate.name}...</span>
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  <p>No messages yet for {candidate.name}.</p>
+                  <p className="text-sm">Start the conversation by sending the first note!</p>
+                </div>
+              ) : (
+                <div>
+                  <div className="text-xs text-gray-400 mb-2">
+                    {messages.length} message{messages.length !== 1 ? 's' : ''} for {candidate.name}
+                  </div>
+                  {messages.map(renderMessage)}
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
 
-        <div className="text-xs text-gray-500 mt-1">
-          Tip: Use @username to mention team members and notify them about this candidate
+            {showMentions && filteredUsers.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-2 mb-2 max-h-40 overflow-y-auto">
+                <div className="text-xs text-gray-500 mb-2 px-2">Mention someone:</div>
+                {filteredUsers.map((user) => (
+                  <button
+                    key={user.id}
+                    className="w-full text-left p-2 hover:bg-gray-100 rounded flex items-center gap-2"
+                    onClick={() => insertMention(user)}
+                  >
+                    <AtSign size={12} className="text-gray-500" />
+                    <span className="font-medium">{user.name}</span>
+                    <span className="text-xs text-gray-500">({user.email})</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Input
+                ref={inputRef}
+                value={newMessage}
+                onChange={handleInputChange}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your note... Use @ to mention someone"
+                disabled={sending}
+                className="flex-1 border-gray-300 focus:border-gray-500"
+              />
+              <Button
+                onClick={sendMessage}
+                disabled={!newMessage.trim() || sending}
+                size="icon"
+                className="bg-black hover:bg-gray-800 text-white"
+              >
+                {sending ? <LoadingSpinner size="sm" /> : <Send size={16} />}
+              </Button>
+            </div>
+
+            <div className="text-xs text-gray-500 mt-1">
+              Tip: Use @username to mention team members and notify them about this candidate
+            </div>
+          </motion.div>
+
+          <AnimatePresence>
+            {showAISummary && (
+              <motion.div
+                initial={{ opacity: 0, width: 0, x: 20 }}
+                animate={{ opacity: 1, width: '50%', x: 0 }}
+                exit={{ opacity: 0, width: 0, x: 20 }}
+                transition={{ duration: 0.5, ease: 'easeInOut' }}
+                className="h-full overflow-hidden"
+              >
+                {aiSummary && (
+                  <AISummaryPanel
+                    summary={aiSummary}
+                    candidateName={candidate.name}
+                    isLoading={loadingAISummary}
+                  />
+                )}
+                {loadingAISummary && (
+                  <AISummaryPanel
+                    summary={{} as CandidateSummary}
+                    candidateName={candidate.name}
+                    isLoading={true}
+                  />
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </DialogContent>
     </Dialog>
