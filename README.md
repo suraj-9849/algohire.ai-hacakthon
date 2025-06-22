@@ -5,11 +5,11 @@ A modern collaborative platform for managing candidate notes and mentions, built
 ## **Architecture**
 
 - **Frontend:** Next.js 14 + TypeScript + TailwindCSS
-- **Database:** Firebase Firestore (NoSQL)
+- **Database:** Firebase Firestore (NoSQL), Redis 
 - **Authentication:** Firebase Auth
 - **Real-time:** Firebase real-time listeners
 - **UI Components:** Shadcn/ui
-- **State Management:** TanStack Query
+- **State Management/API Calls :** TanStack Query
 - **Styling:** TailwindCSS
 
 ## **Features**
@@ -39,6 +39,15 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+
+NODE_ENV=development
+NEXT_PUBLIC_NODE_ENV=development 
+
+REDIS_HOST=
+REDIS_PORT=
+NEXT_PUBLIC_GEMINI_API_KEY =
+REDIS_PASSWORD =
+REDIS_DB=0
 ```
 
 ### Installation & Development
@@ -73,7 +82,7 @@ pnpm type-check       # TypeScript type checking
 4. Set up Firestore security rules
 5. Copy your Firebase config to `.env.local`
 
-## 📱 **Usage**
+##  **Usage**
 
 1. **Sign Up/Login:** Create an account or sign in
 2. **Add Candidates:** Click "Add Candidate" to create profiles
@@ -87,6 +96,11 @@ pnpm type-check       # TypeScript type checking
 # Build and run with Docker
 docker-compose up --build
 ```
+
+### wrote the CI-CD pipleine for the Azure
+I am deploying the docker Image onto the Azure in the Azure Container Registry (ACR)
+
+### Deployed the Project on Vercel: https://algohire-ai-hacakthon-web.vercel.app/ 
 
 ## **Tech Stack Details**
 
